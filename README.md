@@ -109,8 +109,8 @@ npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
 |---|---|---|
 | `/api/dsh-notifier/config` | GET/PUT | 读取/保存配置 |
 | `/api/dsh-notifier/events` | GET | SSE 通知帧（浏览器 EventSource 订阅） |
-| `/api/dsh-notifier/test` | POST | 测试通知（绕过免打扰） |
-| `/api/dsh-notifier/history` | GET / **DELETE** | GET 最近通知记录（最多 200 条，`historyMaxAgeDays` 过滤 / 被免打扰拦截的标记 `suppressed`）；**DELETE 清空** |
+| `/api/dsh-notifier/test` | POST | 测试通知（绕过免打扰）——**API-only**（应用内「发送测试通知」按钮已随 UI 迁移移除，供 curl/程序化验证链路） |
+| `/api/dsh-notifier/history` | GET / **DELETE** | GET 最近通知记录（最多 200 条，`historyMaxAgeDays` 过滤 / 被免打扰拦截的标记 `suppressed`）；**DELETE 清空**——**API-only**（应用内「通知记录」面板已移除，供程序化读取/清理） |
 | `/api/dsh-notifier/health` | GET | 健康检查 |
 
 ## 类型依赖

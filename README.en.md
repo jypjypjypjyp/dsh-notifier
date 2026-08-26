@@ -113,8 +113,8 @@ The config is registered via dsh-settings as a native DSH **Settings → Plugin 
 |---|---|---|
 | `/api/dsh-notifier/config` | GET/PUT | Read / save config |
 | `/api/dsh-notifier/events` | GET | SSE notification frames (browser EventSource subscription) |
-| `/api/dsh-notifier/test` | POST | Test notification (bypasses Do-Not-Disturb) |
-| `/api/dsh-notifier/history` | GET / **DELETE** | GET recent notification records (up to 200, filtered by `historyMaxAgeDays`; entries suppressed by DND are flagged `suppressed`); **DELETE clears** |
+| `/api/dsh-notifier/test` | POST | Test notification (bypasses Do-Not-Disturb) — **API-only** (the in-app "Send test notification" button was removed with the UI migration; use curl/programmatic to verify the channel) |
+| `/api/dsh-notifier/history` | GET / **DELETE** | GET recent notification records (up to 200, filtered by `historyMaxAgeDays`; entries suppressed by DND are flagged `suppressed`); **DELETE clears** — **API-only** (the in-app "notification history" panel was removed; use programmatically) |
 | `/api/dsh-notifier/health` | GET | Health check |
 
 ## Type dependencies
