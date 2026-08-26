@@ -51,9 +51,9 @@ npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
 插件所有接口都受 **loopback 围栏**保护：仅接受本机回环（`127.0.0.1` /
 `localhost`）调用。因此**从局域网浏览器直连 `http://<服务器IP>:3080` 时，
 `/api/dsh-notifier/*` 一律返回 403，通知通道不工作**——这是安全护栏的预期行为，
-不是插件故障；此时页面内会给出引导提示。
+不是插件故障。
 
-请选用下列任一形态访问（均在面板与 README 中给出提示）：
+请选用下列任一形态访问（均经回环校验 + 安全上下文才能收到通知）：
 
 | 形态 | 访问方式 | 说明 |
 |---|---|---|
@@ -78,10 +78,10 @@ npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
 - **免打扰时段**：支持跨午夜（如 22:00 → 08:00）；可设**紧急例外**（`allowKinds`：免打扰期间仍提醒审批/提问/出错）
 - **审批超时二次提醒**：审批等待超 `askRemindMin` 分钟（默认 5，0 关闭）未处理时再次提醒
 - **完成风暴聚合**：多任务/子代理同时收尾自动聚合为「另有 N 个任务已完成」，避免刷屏
-- **面板诊断**：配置面板显示浏览器通知授权状态与安全上下文提示
-- **未读角标**：有通知未查看时侧边栏「通知」入口显示红点计数，打开面板即清零
 
-## 配置（~/.dsh/dsh-notifier.json，GUI「通知」面板可改）
+## 配置（DSH「设置」→「插件配置」，schema 驱动统一风格表单）
+
+配置经 dsh-settings 注册为 DSH 原生 **设置 → 插件配置** section，由设置页自动渲染（统一风格），不再有独立的侧边栏「通知」面板/角标/测试按钮/历史面板。配置持久化在 DSH 设置服务（迁移时以现有 `~/.dsh/dsh-notifier.json` 作为 base 层，不丢配置）。配置结构：
 
 ```json
 {
@@ -138,12 +138,12 @@ DSH 安装实测版本 junction-link（与运行时一致）。对插件做类�
 - 系统通知失败静默（仅日志），不影响主流程；原生二进制缺失/不可执行（ENOENT 等）
   会被 `error` 事件接住，**绝不冒泡成 unhandled error 把宿主进程打挂**（见 issue #1）
 - **两个通道到达的机器不同（别混淆）**：
-  - **浏览器通知**推到**你正在用的浏览器客户端**（Mac/手机都算），由浏览器 Notification API 弹出原生通知；需要授权、且默认页面隐藏时才弹（面板可开「页面可见也弹」）。无论 dsh web 跑在哪台机器，只要浏览器通知允许，你都能在自己的 Mac 上收到。
-  - **系统通知（宿主 toast）**弹在 **dsh web 运行的宿主机器**桌面：若 dsh web 跑在 Linux 服务器（headless，无桌面会话）或别的机器上，toast 会出现在**那台服务器**而不是你的 Mac——面板/health 会体现该通道是否可用。想让系统 toast 也出现在你的 Mac 上，需把 dsh web 直接跑在你的 Mac 上（此时走 macOS 的 `osascript`）；macOS 无 `notify-send`，系统通知已用系统自带的 `osascript` 实现（无需安装）
+  - **浏览器通知**推到**你正在用的浏览器客户端**（Mac/手机都算），由浏览器 Notification API 弹出原生通知；需要授权、且默认页面隐藏时才弹（「设置 → 插件配置」可开「页面可见也弹」）。无论 dsh web 跑在哪台机器，只要浏览器通知允许，你都能在自己的 Mac 上收到。
+  - **系统通知（宿主 toast）**弹在 **dsh web 运行的宿主机器**桌面：若 dsh web 跑在 Linux 服务器（headless，无桌面会话）或别的机器上，toast 会出现在**那台服务器**而不是你的 Mac——health 会体现该通道是否可用。想让系统 toast 也出现在你的 Mac 上，需把 dsh web 直接跑在你的 Mac 上（此时走 macOS 的 `osascript`）；macOS 无 `notify-send`，系统通知已用系统自带的 `osascript` 实现（无需安装）
 - **iOS 差异**：Safari 普通标签页无 Web Notifications API（「添加到主屏幕」的 PWA
   才有）；iOS 上可用通道为「页面可见时横幅 + 提示音」及 HTTPS+A2HS 后的系统通知
 - 浏览器通知需要**安全上下文**（HTTPS 或 localhost）；局域网 HTTP 访问自动走降级通道（横幅/提示音/标题提醒）
-- 浏览器通知权限为手势内请求（点击侧边栏「通知」入口或面板按钮时）
+- 浏览器通知权限为手势内请求（首次点击页面任意位置时；不再有侧边栏入口/面板按钮）
 - Windows 系统通知通过 PowerShell WinRT 脚本实现，命令以参数数组传递、标题/正文打包为 base64(UTF-8 JSON) 经单一 payload 参数传入（无 shell 拼接面，且规避 PS 5.1 命令行参数解析歧义，见 issue #238）；脚本启动时幂等注册 AppUserModelId `DSH.dsh-notifier`（HKCU，无需管理员权限）——未注册的 AUMID 在 Win10/11 上 toast 会被系统静默丢弃。AUMID 采用 `Company.Product` 形态，避免在公共命名空间（`HKCU\SOFTWARE\Classes\AppUserModelId`）与其他同名软件冲突互覆；历史版本注册的旧键 `DSH` 残留无害（仅一个空注册表条目，不影响新 toast），如需清理可手动执行 `Remove-Item -Path "HKCU:\SOFTWARE\Classes\AppUserModelId\DSH"`
 
 ## 验证

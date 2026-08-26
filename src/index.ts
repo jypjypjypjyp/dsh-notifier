@@ -54,6 +54,11 @@ import { HISTORY_LIMIT, createHistoryStore } from "./history.js";
 import { NOTIFY_KINDS, sanitizeErrorText, sessionTitleOf, isSubagentOf, lastTurnEndOf } from "./message.js";
 import type { NotifyDetail } from "./message.js";
 import { ROUTES, buildRoutes, createSseHub, createSystemNotifier } from "./server.js";
+// 设置页→插件配置 统一入口（宿主核心模块，运行时注入）：config 的 schema 驱动
+// 表单由 DSH 设置页自动渲染（统一风格）。runtime 值导入（非 type-only）——
+// 区别于「仅 import type」的官方类型层约定；这两个模块是宿主核心，dsh-guardrail 同款。
+import z from "@deepseek-ai/schemastery";
+import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 
 /** 稳定的 cordis 插件名。 */
 export const name = "notifier";
@@ -84,6 +89,34 @@ export { ROUTES } from "./server.js";
 // 辅助函数统一来自自包含工具层（loopback 围栏 / writeJson / readBody / errorMessage）。
 export { isLoopbackRequest } from "./utils.js";
 export { writeJson, readBody, errorMessage } from "./utils.js";
+
+/**
+ * schemastery schema：DSH 设置页→插件配置 的统一风格表单（由 DSH 设置页自动渲染，
+ * 无需插件写配置 UI；对齐 dsh-guardrail 的 installSettingsSection 模式）。
+ * 字段与 NotifyConfig / DEFAULT_CONFIG 一一对应。
+ */
+const NotifyConfigSchema = z.object({
+  notifyAsk: z.boolean().default(true),
+  notifyQuestion: z.boolean().default(true),
+  notifyTaskDone: z.boolean().default(true),
+  notifySubagentDone: z.boolean().default(false),
+  notifyTaskError: z.boolean().default(true),
+  notifyTurnEnd: z.boolean().default(false),
+  systemNotify: z.boolean().default(true),
+  browserNotify: z.boolean().default(true),
+  notifyWhenVisible: z.boolean().default(false),
+  notifySound: z.boolean().default(true),
+  quietHours: z.object({
+    enabled: z.boolean().default(false),
+    start: z.string().default("22:00"),
+    end: z.string().default("08:00"),
+    allowKinds: z.array(z.string()).default([]),
+  }),
+  errorMergeWindowMs: z.number().min(0).max(3600000).default(60000),
+  askRemindMin: z.number().min(0).max(600).default(5),
+  doneMergeWindowMs: z.number().min(0).max(60000).default(3000),
+  historyMaxAgeDays: z.number().min(0).max(3650).default(0),
+});
 
 /**
  * 挂载 dsh-notifier。
@@ -584,6 +617,28 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
   // ------------------------------------------------------------ 启动与清理
 
   await loadConfig();
+
+  // 注册 DSH 设置页→插件配置 命名空间（schema 驱动 + 统一风格由 DSH 渲染）。
+  // entry = 组合层基准；setSource 在 settings service 挂载时把已解析配置
+  // （defaults ← base ← user）回流进 current——设置页即配置编辑器。
+  // 无 settings service 时本调用为 no-op（current 保持 loadConfig/默认值），
+  // 测试/无 settings 的宿主路径不受影响，保持向后兼容。
+  // ⚠️ installSettingsSection 内部经 ctx.inject(["settings"]) 依赖注入取 service：
+  // 仅当宿主 ctx.inject 存在（cordis 运行时）才注册；测试 fake ctx 无 inject，跳过。
+  if (typeof (ctx as { inject?: unknown }).inject === "function") {
+    // entry 用已加载的 current（文件/默认）作为 base——迁移到 settings 服务时把用户
+    // 现有文件配置保留为 base 层（设置页默认值），不丢配置；用户随后可在设置页覆盖。
+    installSettingsSection(ctx, settingsNamespace("notifier"), NotifyConfigSchema, current, {
+      setSource: (get) => {
+        try {
+          current = normalizeConfig(get());
+        } catch (error) {
+          ctx.logger.warn(`dsh-notifier: 设置区配置解析失败（保留现值）: ${errorMessage(error)}`);
+        }
+      },
+      onChange: () => {},
+    });
+  }
 
   // ⚠️ 清理必须放在 effect **返回的 disposer** 里，不能写在 fn 主体：
   // ctx.effect(fn) 的 fn 在 apply 时立即同步执行，只有返回值才在 fiber

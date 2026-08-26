@@ -47,7 +47,7 @@ link_pkg() {
   " "$link" "$target"
 }
 mkdir -p node_modules/@deepseek-ai
-for pkg in cordis cosmokit schemastery dsh-agent dsh-host-webserver dsh-session dsh-session-title dsh-user-approval dsh-tools dsh-scope dsh-llm dsh-client-runtime; do
+for pkg in cordis cosmokit schemastery dsh-settings dsh-agent dsh-host-webserver dsh-session dsh-session-title dsh-user-approval dsh-tools dsh-scope dsh-llm dsh-client-runtime; do
   link_pkg "$pkg"
 done
 
