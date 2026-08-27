@@ -1,6 +1,6 @@
 # @wingsky-1/dsh-notifier
 [![npm](https://img.shields.io/npm/v/@wingsky-1/dsh-notifier)](https://www.npmjs.com/package/@wingsky-1/dsh-notifier)
-[![GitHub Releases](https://img.shields.io/github/v/release/wingsky-1/dsh-plugin-hub)](https://github.com/wingsky-1/dsh-plugin-hub/releases)
+[![GitHub Releases](https://img.shields.io/github/v/release/wingsky-1/dsh-notifier)](https://github.com/wingsky-1/dsh-notifier/releases)
 
 审批/完成/错误事件通知：人不在浏览器前也能收到提醒。
 
@@ -79,9 +79,9 @@ npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
 - **审批超时二次提醒**：审批等待超 `askRemindMin` 分钟（默认 5，0 关闭）未处理时再次提醒
 - **完成风暴聚合**：多任务/子代理同时收尾自动聚合为「另有 N 个任务已完成」，避免刷屏
 
-## 配置（DSH「设置」→「插件配置」，schema 驱动统一风格表单）
+## 配置（DSH「设置」→「插件配置」，卡片式）
 
-配置经 dsh-settings 注册为 DSH 原生 **设置 → 插件配置** section，由设置页自动渲染（统一风格），不再有独立的侧边栏「通知」面板/角标/测试按钮/历史面板。配置持久化在 DSH 设置服务（迁移时以现有 `~/.dsh/dsh-notifier.json` 作为 base 层，不丢配置）。配置结构：
+配置以**可折叠卡片**注册在 DSH 原生 **设置 → 插件配置**（`settings.plugin.item`，key `notifier`），由客户端组件渲染（fetch 型，非 schema 自动渲染）。配置文件默认 `~/.dsh/dsh-notifier.json`，可在「设置 → 插件配置」直接改（写回落盘）；迁移时以现有 `~/.dsh/dsh-notifier.json` 作为 DSH 设置服务 base 层，不丢配置。配置结构：
 
 ```json
 {

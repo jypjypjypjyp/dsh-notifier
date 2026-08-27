@@ -54,9 +54,12 @@ import { HISTORY_LIMIT, createHistoryStore } from "./history.js";
 import { NOTIFY_KINDS, sanitizeErrorText, sessionTitleOf, isSubagentOf, lastTurnEndOf } from "./message.js";
 import type { NotifyDetail } from "./message.js";
 import { ROUTES, buildRoutes, createSseHub, createSystemNotifier } from "./server.js";
-// 设置页→插件配置 统一入口（宿主核心模块，运行时注入）：config 的 schema 驱动
-// 表单由 DSH 设置页自动渲染（统一风格）。runtime 值导入（非 type-only）——
-// 区别于「仅 import type」的官方类型层约定；这两个模块是宿主核心，dsh-guardrail 同款。
+// DSH 设置服务命名空间注册（宿主核心模块，运行时注入）：把 `notifier` 命名空间
+// 注册进 DSH 设置服务（composition entry 作为 base 层），source thunk 指向 resolved
+// scope，setSource 把生效配置回流到 current——使配置进入 DSH「设置→插件配置」范围。
+// 注意：真正的表单渲染在客户端（settings.plugin.item 卡片，fetch 型），此处 schema
+// 供设置服务 resolve/校验，不负责渲染。runtime 值导入（非 type-only）——区别于
+// 「仅 import type」的官方类型层约定；这两个模块是宿主核心，dsh-guardrail 同款。
 import z from "@deepseek-ai/schemastery";
 import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 
@@ -91,9 +94,9 @@ export { isLoopbackRequest } from "./utils.js";
 export { writeJson, readBody, errorMessage } from "./utils.js";
 
 /**
- * schemastery schema：DSH 设置页→插件配置 的统一风格表单（由 DSH 设置页自动渲染，
- * 无需插件写配置 UI；对齐 dsh-guardrail 的 installSettingsSection 模式）。
- * 字段与 NotifyConfig / DEFAULT_CONFIG 一一对应。
+ * schemastery schema：notifier 命名空间的设置服务 resolve/校验用（供 DSH
+ * 设置服务解析配置，字段与 NotifyConfig / DEFAULT_CONFIG 一一对应）。
+ * 渲染由客户端 settings.plugin.item 卡片负责，此处不产 UI。
  */
 const NotifyConfigSchema = z.object({
   notifyAsk: z.boolean().default(true),

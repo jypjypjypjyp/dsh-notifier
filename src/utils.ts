@@ -22,26 +22,6 @@ export function writeJson(res: ServerResponse, status: number, payload: unknown)
 }
 
 /**
- * 宽松读请求 body（JSON）：解析失败或超限返回 undefined（不抛错），由调用方决定响应。
- * @param limit 字节上限（默认 2MB）。
- */
-export async function readJsonBody(req: IncomingMessage, limit = 2 * 1024 * 1024): Promise<object | undefined> {
-  try {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const chunk of req) {
-      size += chunk.length;
-      if (size > limit) return undefined;
-      chunks.push(chunk as Buffer);
-    }
-    const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    return typeof parsed === "object" && parsed !== null ? (parsed as object) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
  * 把任意抛出的值转成可读错误消息。
  */
 export function errorMessage(error: unknown): string {
