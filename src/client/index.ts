@@ -260,10 +260,9 @@ import React from "react";
 
   // ------------------------------------------------------------ 设置卡片（DSH「插件配置」）
 
-  /** settingsScope 绑定（apply 里设置）；React 卡片经闭包读取。 */
-  var notifierScope: any = null;
-
-  // DSH 主题 token 内联样式（零硬编码色；root 继承宿主默认 sans）。
+  // 与 super-injector 同款：只依赖 ctx.slots（不依赖 settingsScope），配置经
+  // /api/dsh-notifier/config GET/PUT 读写（host 的 current 即 settings 回流值，
+  // PUT 会更新 current 并落盘——与宿主 installSettingsSection 的 setSource 兼容）。
   var rowStyle = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "8px 0", borderBottom: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" };
   var groupTitleStyle = { fontSize: "12px", fontWeight: "600", color: "var(--dsw-alias-label-secondary,#5f6672)", margin: "10px 0 4px" };
   var labelStyle = { flex: "1", fontSize: "13px", color: "var(--dsw-alias-label-primary,#1f2329)" };
@@ -279,18 +278,28 @@ import React from "react";
   }
 
   function NotifierSettingsCard(props: any) {
-    var pair = React.useState(function () { return notifierScope ? notifierScope.getSnapshot() : {}; });
-    var cfg = pair[0];
-    var setCfg = pair[1];
+    var pair = React.useState(function () { return { loading: true, cfg: null }; });
+    var st = pair[0];
+    var setSt = pair[1];
     React.useEffect(function () {
-      if (!notifierScope) return;
-      return notifierScope.subscribe(function () { setCfg(notifierScope.getSnapshot()); });
+      fetch(ROUTES.config, { headers: { accept: "application/json" } })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (cfg) { setSt({ loading: false, cfg: cfg }); })
+        .catch(function () { setSt({ loading: false, cfg: null }); });
     }, []);
-    if (!cfg || !notifierScope) return React.createElement("div", { style: noteStyle }, "加载配置…");
+    if (st.loading) return React.createElement("div", { style: noteStyle }, "加载配置…");
+    if (!st.cfg) return React.createElement("div", { style: noteStyle }, "配置不可用（loopback 围栏：请经 127.0.0.1/localhost 访问）。");
 
-    var set = notifierScope.set;
+    var cfg = st.cfg;
+    var commit = function (next: any) {
+      fetch(ROUTES.config, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(next) })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (saved) { setSt({ loading: false, cfg: saved }); })
+        .catch(function () { /* 保留现值 */ });
+    };
+    var set = function (field: string, v: any) { commit(Object.assign({}, cfg, (function () { var o: any = {}; o[field] = v; return o; })())); };
     var qh = cfg.quietHours || { enabled: false, start: "22:00", end: "08:00", allowKinds: [] };
-    var setQh = function (patch: any) { set("quietHours", Object.assign({}, qh, patch)); };
+    var setQh = function (patch: any) { commit(Object.assign({}, cfg, { quietHours: Object.assign({}, qh, patch) })); };
 
     var children: any[] = [];
     children.push(React.createElement("div", { style: groupTitleStyle }, "通知事件"));
@@ -333,7 +342,7 @@ import React from "react";
         ));
       });
 
-    children.push(React.createElement("div", { style: noteStyle }, "浏览器通知仅在页面隐藏时弹出（可开「页面可见时也弹」）；系统通知由宿主发出。改动立即写入 DSH 设置。"));
+    children.push(React.createElement("div", { style: noteStyle }, "浏览器通知仅在页面隐藏时弹出（可开「页面可见时也弹」）；系统通知由宿主发出。"));
     return React.createElement("div", { style: {} }, children);
   }
 
@@ -358,9 +367,8 @@ export function apply(ctx: any) {
         if ("Notification" in window && Notification.permission === "default") requestPermission();
         document.removeEventListener("click", onFirstClick);
       }, { capture: true });
-      // DSH「设置 → 插件配置」卡片（host 已注册 notifier 命名空间）。
-      if (ctx && ctx.slots && typeof ctx.slots.inject === "function" && ctx.settingsScope) {
-        notifierScope = ctx.settingsScope.bind({ namespace: "notifier" });
+      // DSH「设置 → 插件配置」卡片（super-injector 同款：仅依赖 ctx.slots）。
+      if (ctx && ctx.slots && typeof ctx.slots.inject === "function") {
         ctx.effect(function () {
           return ctx.slots.inject("settings.plugin.item", function () {
             return ctx.slots.register({ name: "settings.plugin.item", key: "notifier" }, NotifierSettingsCard);
