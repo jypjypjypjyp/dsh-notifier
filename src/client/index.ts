@@ -269,6 +269,14 @@ import React from "react";
   var inputStyle = { width: "96px", background: "var(--dsw-alias-bg-layer-1,#f5f6f8)", color: "var(--dsw-alias-label-primary,#1f2329)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 8px", boxSizing: "border-box" };
   var timeStyle = { background: "var(--dsw-alias-bg-layer-1,#f5f6f8)", color: "var(--dsw-alias-label-primary,#1f2329)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 8px" };
   var noteStyle = { fontSize: "11px", color: "var(--dsw-alias-label-tertiary,#8a919c)", lineHeight: "1.6", marginTop: "8px" };
+  // 卡片壳（对齐 dsh-advisor 的 settings.plugin.item 卡片：header 标题+描述+chevron，body 可折叠）。
+  var cardStyle = { border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", background: "var(--dsw-alias-bg-layer-3,#f5f6f8)", borderRadius: "12px", overflow: "hidden" };
+  var headerStyle = { appearance: "none", width: "100%", font: "inherit", color: "inherit", textAlign: "left", cursor: "pointer", background: "transparent", border: "0", alignItems: "center", gap: "12px", padding: "14px 16px", display: "flex" };
+  var headTextStyle = { flexDirection: "column", flex: "1", gap: "4px", minWidth: "0", display: "flex" };
+  var nameStyle = { color: "var(--dsw-alias-label-primary,#1f2329)", fontSize: "15px", fontWeight: "600", lineHeight: "1.4" };
+  var descriptionStyle = { color: "var(--dsw-alias-label-tertiary,#8a919c)", fontSize: "13px", lineHeight: "1.5" };
+  var chevronStyle = { color: "var(--dsw-alias-label-tertiary,#8a919c)", flex: "none", transition: "transform .16s", transform: "rotate(0deg)" };
+  var bodyStyle = { borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "0 16px", paddingBottom: "8px" };
 
   function ToggleRow(props: any) {
     return React.createElement("label", { style: rowStyle },
@@ -281,6 +289,9 @@ import React from "react";
     var pair = React.useState(function () { return { loading: true, cfg: null }; });
     var st = pair[0];
     var setSt = pair[1];
+    var openPair = React.useState(false);
+    var open = openPair[0];
+    var setOpen = openPair[1];
     React.useEffect(function () {
       fetch(ROUTES.config, { headers: { accept: "application/json" } })
         .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
@@ -343,7 +354,16 @@ import React from "react";
       });
 
     children.push(React.createElement("div", { style: noteStyle }, "浏览器通知仅在页面隐藏时弹出（可开「页面可见时也弹」）；系统通知由宿主发出。"));
-    return React.createElement("div", { style: {} }, children);
+    return React.createElement("div", { style: cardStyle },
+      React.createElement("button", { type: "button", style: headerStyle, onClick: function () { setOpen(!open); }, "aria-expanded": String(open), "aria-label": (open ? "收起" : "展开") + ": 通知" },
+        React.createElement("div", { style: headTextStyle },
+          React.createElement("span", { style: nameStyle }, "通知"),
+          React.createElement("span", { style: descriptionStyle }, "审批 / 完成 / 错误事件提醒")
+        ),
+        React.createElement("span", { style: Object.assign({}, chevronStyle, open ? { transform: "rotate(180deg)" } : {}) }, "▾")
+      ),
+      open ? React.createElement("div", { style: bodyStyle }, children) : null
+    );
   }
 
   // ------------------------------------------------------------ 挂载
