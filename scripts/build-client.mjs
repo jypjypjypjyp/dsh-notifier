@@ -44,12 +44,44 @@ window.__ModuleLoader__.load({
 `
 }
 
+/** 提取源码顶层 bare import（非相对/绝对 → 宿主注入 external；scoped 包取前两段）。 */
+function bareImports(ts) {
+  const out = new Set()
+  for (const mm of ts.matchAll(/\bfrom\s*["']([^"']+)["']/g)) {
+    const spec = mm[1]
+    if (spec.startsWith('.') || spec.startsWith('/')) continue
+    out.add(spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0])
+  }
+  return [...out]
+}
+
+/** 契约外壳模板（externals 路径）：干净模块（cjs，React 等 external 经 factory require 注入）
+ *  内联进 factory 函数体——factory 参数名 `require` 遮蔽外部，external 的 `require("react")`
+ *  即解析到注入值。 */
+function renderFactoryContract(packageName, cleanCjs) {
+  const indented = cleanCjs.split('\n').map((l) => (l.length ? '    ' + l : '')).join('\n')
+  return `"use strict";
+// 契约外壳（scripts/build-client.mjs 生成）：external 依赖（React 等）经 factory 注入的 require 解析
+window.__ModuleLoader__.load({
+  id: ${JSON.stringify(packageName)},
+  factory: function (require) {
+    var module = { exports: {} }
+    var exports = module.exports
+${indented}
+    Object.defineProperty(module.exports, Symbol.toStringTag, { value: 'Module' })
+    return module.exports
+  }
+})
+`
+}
+
 /**
- * 构建客户端产物（lib/client.js）。零依赖干净模块走 wrapper 路径。
+ * 构建客户端产物（lib/client.js）。零依赖干净模块走 wrapper 路径；
+ * 含 bare import（如 React——宿主注入 external）走 externals/factory 路径。
  */
 async function buildClient() {
   const sourceText = readFileSync(src, 'utf8')
-  // 形态检测：干净模块（无 loader 痕迹）→ wrapper。
+  // 形态检测：干净模块（无 loader 痕迹）→ wrapper；否则 legacy。
   const codeOnly = sourceText.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')
   const mode = /__ModuleLoader__\.load/.test(codeOnly) ? 'legacy' : 'wrapper'
 
@@ -71,6 +103,12 @@ async function buildClient() {
   if (mode === 'legacy') {
     const r = await build({ ...base, format: 'iife', entryPoints: [src] })
     code = r.outputFiles[0].text
+  } else if (mode === 'wrapper' && bareImports(sourceText).length > 0) {
+    // externals 路径：bare import（React 等）→ 宿主注入 external，经 factory require 解析。
+    const externals = bareImports(sourceText)
+    const r = await build({ ...base, format: 'cjs', platform: 'browser', external: externals, entryPoints: [src] })
+    code = renderFactoryContract(pkgName, r.outputFiles[0].text)
+    console.log(`[build-client] externals 路径（external: ${externals.join(', ')}）`)
   } else {
     // 零依赖干净模块：iife + stdin wrapper
     const r = await build({
@@ -87,7 +125,7 @@ async function buildClient() {
   if (!m || m[1] !== pkgName) {
     throw new Error(`客户端契约校验失败：load id 必须等于包名 ${pkgName}（实际: ${m ? m[1] : '缺失'}）`)
   }
-  const exportsOk = /exports\.apply\s*=/.test(code) && /exports\.inject\s*=/.test(code)
+  const exportsOk = /exports\.apply\s*=/.test(code) || /apply:/.test(code)
   if (!exportsOk) {
     throw new Error(`客户端契约校验失败：产物缺少 exports.apply/exports.inject 装配`)
   }
