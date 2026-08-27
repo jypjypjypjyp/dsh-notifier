@@ -4,10 +4,10 @@
  *
  * 覆盖：agent/status per-agent 状态机（多会话互不误报、连续 idle 不重复、
  * disposed 清理）；完成风暴聚合（首条即时 + 窗口补发聚合条）；agent/error
- * 通知与滚动窗口合并（含窗口过期计数、0=关闭）；子代理完成场景（issue #49：
+ * 通知与滚动窗口合并（含窗口过期计数、0=关闭）；子代理完成场景（
  * fork 型委派按运行时归属拆分——归属成立默认静默/开关联动 subagent-done、
  * 归属不成立保护用户 fork 主线走 done；spawn 型 origin 用例与 S2 开关组合）；
- * issue #272 双源订阅（session/event 推送流互补：events 停滞形态兜底通知、
+ * 双源订阅（session/event 推送流互补：events 停滞形态兜底通知、
  * 双源同 turn 去重）与跳过路径 warn 兜底。
  */
 import { join } from "node:path";
@@ -130,7 +130,7 @@ try {
   {
     const subCfg = join(work, "subagent.json");
 
-    // ── issue #49：fork 型委派子代理完成不再误报主任务 kind=done ──
+    // ── fork 型委派子代理完成不再误报主任务 kind=done ──
     // fork 型委派（parentSession + seedLength、无 origin、depth=0）与用户 fork
     // 主线在持久化 header 上不可区分，判定补运行时归属（ctx.agents.get /
     // isOwnedBy）。原反例 1「仅 parentSession 无 origin 必须 walk done」与新
@@ -147,7 +147,7 @@ try {
         { agents, ...loggingOverride(infos) }
       );
       const status = listeners.get("agent/status")[0];
-      // fork 型委派完整持久化 header 形态：parentSession + seedLength、无 origin、depth=0（#199 P2-5 对齐）
+      // fork 型委派完整持久化 header 形态：parentSession + seedLength、无 origin、depth=0（P2-5 对齐）
       const forkAgent = () => agentWithTitle("fork-worker", "fork 委派子任务", { parentSession: "main-parent", seedLength: 3, depth: 0, turnEnd: 1 });
       status({ agent: forkAgent(), status: "running" });
       status({ agent: forkAgent(), status: "idle" });
@@ -169,7 +169,7 @@ try {
       const infos = [];
       const { listeners } = await makeNotifier(work, { configFile: onCfg }, { agents, ...loggingOverride(infos) });
       const status = listeners.get("agent/status")[0];
-      // 同 A1：完整持久化 header 形态含 seedLength（#199 P2-5 对齐）
+      // 同 A1：完整持久化 header 形态含 seedLength（P2-5 对齐）
       const forkAgent = () => agentWithTitle("fork-worker2", "fork 委派子任务B", { parentSession: "main-parent2", seedLength: 3, depth: 0, turnEnd: 1 });
       status({ agent: forkAgent(), status: "running" });
       status({ agent: forkAgent(), status: "idle" });
@@ -182,7 +182,7 @@ try {
 
     // B1 支 1：header 含 parentSession 但父 id 不在 live registry（父已销毁/
     // 冷 resume 脱离）→ 归属不成立，必须走主任务分支 kind=done（保护用户
-    // fork 主线，#7 语义不回归），不得被静默或误报 subagent-done。
+    // fork 主线语义不回归），不得被静默或误报 subagent-done。
     {
       const agents = fakeAgents(["fork-orphan"], []);
       const infos = [];
@@ -210,7 +210,7 @@ try {
     }
 
     // D1：headless CLI 会话（header 仅 {cwd}，无 origin 无 parentSession）两信号
-    //     皆否，保持现状按主任务分支处理（本 issue 不改变其分类）。
+    //     皆否，保持现状按主任务分支处理（本项不改变其分类）。
     {
       const infos = [];
       const { listeners } = await makeNotifier(work, { configFile: join(work, "sub-headless.json") }, loggingOverride(infos));
@@ -222,7 +222,7 @@ try {
       assert.match(infos[0], /dsh-notifier: done /);
     }
 
-    // 反例 2（原 #7 回归防护保留）：主会话（无 header / 无 origin）必须走 done。
+    // 反例 2（回归防护保留）：主会话（无 header / 无 origin）必须走 done。
     {
       const infos = [];
       const { listeners } = await makeNotifier(work, { configFile: join(work, "sub-main.json") }, loggingOverride(infos));
@@ -290,7 +290,7 @@ try {
     }
   }
 
-  // ── issue #272：完成判定双源订阅（session/event 推送流互补源）+ 跳过路径 warn 兜底 ──
+  // ── 完成判定双源订阅（session/event 推送流互补源）+ 跳过路径 warn 兜底 ──
   {
     const infos = [];
     const warns = [];
@@ -308,7 +308,7 @@ try {
     const disposed = listeners.get("agent/disposed")[0];
     const countDone = () => infos.filter((t) => /dsh-notifier: done /.test(t)).length;
 
-    // (a) events 停滞形态反证（#272 报告场景）：agent.session.events 冻结在
+    // (a) events 停滞形态反证：agent.session.events 冻结在
     //     turn=1（快照回读永远拿到旧证据，模拟一次性读滞后被固化的形态），
     //     session/event 推送流正常逐轮派发。修复前：仅首轮通知、后续永久静默
     //     且零日志；修复后：推送流兜底，逐轮通知。
@@ -331,7 +331,7 @@ try {
     assert.equal(countDone(), 5, "(b) 已记忆 turn 的重复到达不重复通知");
 
     // (c) 跳过路径 warn 兜底：无任何新证据的 idle 判定跳过必须可观测
-    //     （#272 报告场景「全程零日志」的反面）。
+    //     （「全程零日志」的反面）。
     status({ agent: agentWithTitle("warn-1", "静默会话", { turnEnd: 1 }), status: "running" });
     status({ agent: agentWithTitle("warn-1", "静默会话", { turnEnd: 1 }), status: "idle" }); // 首轮正常通知，lastEndedTurn=1
     const beforeWarn = countDone();
@@ -358,7 +358,7 @@ try {
     status({ agent: agentWithTitle("gc-1", "清理会话", { turnEnd: 3 }), status: "idle" }); // 状态机+辅源已清零：不通知
     assert.equal(countDone(), beforeWarn, "disposed 清理后辅源残留不误报");
 
-    // (d) 畸形载荷不毒化记忆（#284 复核闸 P1）：turn 非数字的推送 turn/end
+    // (d) 畸形载荷不毒化记忆（复核闸 P1）：turn 非数字的推送 turn/end
     //     直接 skip 不落记忆——修复前 {turn:NaN} 凭 ended===undefined 短路成
     //     best、首轮误报一条并把 lastEndedTurn 推进为 NaN，此后真实完成因
     //     x > NaN 恒 false 被永久吞掉。

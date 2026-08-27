@@ -25,7 +25,7 @@ const pkgDir = fileURLToPath(new URL("..", import.meta.url));
   for (const route of expected) assert.ok(literals.includes(route), `client 缺少路由: ${route}`);
 }
 
-// lib/toast.ps1 发布物完整性（issue #238）：必须带 UTF-8 BOM 且与源文件逐字节一致。
+// lib/toast.ps1 发布物完整性：必须带 UTF-8 BOM 且与源文件逐字节一致。
 // pwsh 7 在 CI 上解析通过抓不住 5.1 的 ANSI 码页问题，字节级断言是唯一机器兜底；
 // 构建期 copyClientResources 已强制补写，此处防回归（编辑器去 BOM / 复制链变更）。
 {

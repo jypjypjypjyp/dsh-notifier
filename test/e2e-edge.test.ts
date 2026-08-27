@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * dsh-notifier — e2e：边缘路径与清理生命周期（#82 批次 4 热点补强）。
+ * dsh-notifier — e2e：边缘路径与清理生命周期（批次 4 热点补强）。
  *
  * 覆盖：生命周期 disposer 清理、readBody async-iterator 分支、审批超时提醒、
  * 通知失败容错（catch 不崩）、完成聚合类型切换、错误合并 ≥3 条 shift、

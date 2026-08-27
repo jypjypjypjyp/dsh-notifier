@@ -139,7 +139,7 @@ export function createSystemNotifier(options: { getSoundEnabled: () => boolean; 
       if (now - lastSystemNotifyAt < SYSTEM_NOTIFY_THROTTLE_MS) return;
       lastSystemNotifyAt = now;
       // 截断按码点而非 UTF-16 code unit：防 emoji 等代理对在边界被腰斩成
-      // 孤立代理（经 JSON/base64 后变成 U+FFFD 替换符显示，issue #238 配套）。
+      // 孤立代理（经 JSON/base64 后变成 U+FFFD 替换符显示）。
       const truncateCodePoints = (s: string, max: number): string => {
         const chars = Array.from(s);
         return chars.length > max ? chars.slice(0, max).join("") : s;
@@ -158,7 +158,7 @@ export function createSystemNotifier(options: { getSoundEnabled: () => boolean; 
         bin = argv[0];
         // 关键：原生二进制缺失/不可执行（ENOENT 等）必须被下方 error 事件接住，
         // 绝不能冒泡成 unhandled 'error' 把宿主进程打挂——历史版本在 macOS 上因
-        // 直接 spawn powershell 失败且未挂 error 监听而崩溃（见 issue #1）。
+        // 直接 spawn powershell 失败且未挂 error 监听而崩溃。
         child = spawn(bin, argv.slice(1), process.platform === "win32" ? { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] } : { stdio: "ignore" });
       } catch (error) {
         warn(`dsh-notifier: 系统通知启动失败: ${errorMessage(error)}`);
@@ -166,7 +166,7 @@ export function createSystemNotifier(options: { getSoundEnabled: () => boolean; 
       }
       if (!child) return; // 极端情况下 spawn 返回空（理论上不会），直接放弃，不碰 child
       // Windows 分支限长收集 stderr：PS 的诊断（param 绑定失败、WinRT 异常等）
-      // 原先随 stdio ignore 全部丢弃，排查只能盲猜（issue #238）；只留尾部片段进日志。
+      // 原先随 stdio ignore 全部丢弃，排查只能盲猜；只留尾部片段进日志。
       let stderrTail = "";
       if (process.platform === "win32" && child.stderr) {
         child.stderr.on("data", (chunk: Buffer) => {
@@ -331,7 +331,8 @@ export function buildRoutes(deps: RouteDeps): WebRoute[] {
 
   /**
    * 测试通知：POST 触发一条测试通知（绕过免打扰，测试意图是验证通道本身）。
-   * 系统通知 + SSE 广播同时走一遍，客户端收到 kind=test 的帧无条件弹窗。
+   * 系统通知 + SSE 广播同时走一遍；浏览器端按 notifyWhenVisible/可见性策略
+   * 决定是否弹条（客户端对 kind=test 无特殊分支）。
    */
   const testRoute: WebRoute = {
     kind: "exact",

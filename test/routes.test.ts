@@ -18,7 +18,7 @@ try {
   const storeFile = join(work, "config.json");
 
   // 独立 history 文件：隔离其他测试块的 fire-and-forget 异步写盘，
-  // 避免跨 apply 实例对同一 history.jsonl 的 read-modify-write 竞态把 test 挤出末尾（issue #17）。
+  // 避免跨 apply 实例对同一 history.jsonl 的 read-modify-write 竞态把 test 挤出末尾。
   const { routes } = await makeNotifier(work, { configFile: storeFile, historyFile: join(work, "history-route.jsonl") });
   const configRoute = routes.find((r) => r.path === ROUTES.config);
   const eventsRoute = routes.find((r) => r.path === ROUTES.events);

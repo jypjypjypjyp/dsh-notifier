@@ -18,7 +18,7 @@
  *   （origin === 'subagent'，或 fork 型委派且运行时归属成立——见 message.ts
  *   isSubagentOf 双信号注释）走独立开关/事件类型 subagent-done；
  *   用户暂停/中断（turn/end reason aborted）固定静默。
- *   完成判定为双源（issue #272）：idle 时从 agent.session.events 快照回读
+ *   完成判定为双源：idle 时从 agent.session.events 快照回读
  *   最新 turn/end，与 session/event 推送流记忆的最新 turn/end 按 turn 取新者
  *   作为本轮结束证据——快照一次性读滞后不再被 lastEndedTurn 固化为永久静默；
  *   同一 turn 两源汇合于同一判定点，天然只通知一次。跳过路径输出可观测 warn。
@@ -35,7 +35,7 @@
  * 配置：~/.dsh/dsh-notifier.json（PUT /config 可改，落盘）
  * 安全：通知文本只含工具名/会话标识/申请理由等元信息，不含工具参数（防敏感信息外泄）。
  */
-// 官方类型层（issue #16，锁 0.1.1-rc.2；仅 import type，编译期擦除，
+// 官方类型层（锁 0.1.1-rc.2；仅 import type，编译期擦除，
 // 禁止运行时值导入——contract-check 有门禁）。session/title 事件键由
 // dsh-session-title 经 declare module 注入 SessionEventMap，必须引入其类型面。
 import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
@@ -47,13 +47,13 @@ import type {} from "@deepseek-ai/dsh-session/types";
 import type {} from "@deepseek-ai/dsh-session-title";
 import type {} from "@deepseek-ai/dsh-user-approval";
 import { errorMessage } from "./utils.js";
-import { CONFIG_KEYS, DEFAULT_CONFIG, configFile, historyFile, normalizeConfig, toastScriptPath } from "./config.js";
-import type { NotifierApplyConfig, NotifyConfig } from "./config.js";
+import { configFile, historyFile, normalizeConfig, toastScriptPath } from "./config.js";
+import type { NotifierApplyConfig } from "./config.js";
 import { isInQuietHours } from "./quiet-hours.js";
-import { HISTORY_LIMIT, createHistoryStore } from "./history.js";
+import { createHistoryStore } from "./history.js";
 import { NOTIFY_KINDS, sanitizeErrorText, sessionTitleOf, isSubagentOf, lastTurnEndOf } from "./message.js";
-import type { NotifyDetail } from "./message.js";
-import { ROUTES, buildRoutes, createSseHub, createSystemNotifier } from "./server.js";
+import type { NotifyDetail, SubagentOwnership } from "./message.js";
+import { buildRoutes, createSseHub, createSystemNotifier } from "./server.js";
 // DSH 设置服务命名空间注册（宿主核心模块，运行时注入）：把 `notifier` 命名空间
 // 注册进 DSH 设置服务（composition entry 作为 base 层），source thunk 指向 resolved
 // scope，setSource 把生效配置回流到 current——使配置进入 DSH「设置→插件配置」范围。
@@ -381,10 +381,10 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
   }
 
   /**
-   * 完成判定辅源记忆（issue #272）：session/event 推送流记录的 per-session
+   * 完成判定辅源记忆：session/event 推送流记录的 per-session
    * 最新 turn/end。主源在 idle 时从 agent.session.events 快照回读 turn/end，
    * 该读是一次性快照——任何一次读滞后都会被下方 lastEndedTurn 的无条件推进
-   * 固化为「后续 turn 全部已处理」的永久静默（#272 报告场景的根因）。本推送
+   * 固化为「后续 turn 全部已处理」的永久静默。本推送
    * 源 post-commit 逐条派发（官方 SessionEventMap 声明面），不依赖快照回读，
    * 作为互补证据根治单点依赖。仅记最新一条：完成判定只关心「比已通知 turn
    * 更新的闭合」，历史无用；agent/disposed 时随状态机一并清理。
@@ -404,7 +404,7 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
         if (!Number.isFinite(turn)) return; // 非有限 turn 的证据不可用：直接 skip 不落记忆，
         // 否则 {turn:NaN} 会在合并处凭 ended===undefined 短路成 best、经首轮
         // rememberedTurn===undefined 放行误报后把 lastEndedTurn 推进为 NaN，
-        // 此后真实完成因 x > NaN 恒 false 被永久吞掉（#284 复核闸 P1）。
+        // 此后真实完成因 x > NaN 恒 false 被永久吞掉（复核闸 P1）。
         eventStreamEnds.set(sessionId, {
           turn,
           kind: String((reason as { kind?: unknown }).kind ?? ""),
@@ -441,13 +441,13 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
           // 首行 throwIfAborted 在 try 外），读到的 turn/end 是上一次运行的
           // ——无新 closure 宁可静默，不误报完成。
           //
-          // 双源证据合并（issue #272）：快照回读（ended）与 session/event
+          // 双源证据合并：快照回读（ended）与 session/event
           // 推送流（streamed，post-commit 不受快照滞后影响）按 turn 取新者
           // 作为本轮结束证据——两源看到的是同一 append-only 日志的同一事件，
           // turn 相同即同一证据（同 turn 天然只通知一次）；快照一次性读滞后
           // 时由推送流兜底，不再固化为永久静默。
           const ended = lastTurnEndOf(agent);
-          // 合并处对称守卫（#284 复核闸 P1 纵深）：仅接受 turn 有限的证据——
+          // 合并处对称守卫（复核闸 P1 纵深）：仅接受 turn 有限的证据——
           // 入口（lastTurnEndOf / session/event 处理器）已各自 skip 非有限
           // turn，此处兜底保证任何畸形证据既不能成 best、也不能推进记忆。
           const streamedRaw = eventStreamEnds.get(agentId);
@@ -472,7 +472,7 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
           // 结束误报为完成（与 DSH accountsForClaim 对未知 kind 保守不成功的
           // 语义对齐；失败由 agent/error 单独负责「任务出错」）。
           if (!hasNewEnd || best === undefined || best.kind !== "completed") {
-            // P0 warn 兜底（issue #272）：跳过路径必须可观测——#272 的报告
+            // P0 warn 兜底：跳过路径必须可观测——报告
             // 场景正是该分支全程零日志，静默固化无从排查。warn 只进服务端
             // 日志，不打扰用户；aborted 等设计内静默同样留痕（kind 字段区分）。
             ctx.logger.warn(
@@ -483,11 +483,36 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
             return;
           }
           const taskTitle = sessionTitleOf(agent);
-          // 子代理判定（issue #49 双信号）：origin 命中即 spawn 型；未命中查
+          // 子代理判定（双信号）：origin 命中即 spawn 型；未命中查
           // 运行时归属（fork 型委派 worker）；归属不成立/agents 服务缺位一律
           // 保守走主任务分支——用户 fork 主线不被静默。三类 header 形态与
           // 冷 resume 保守边界见 isSubagentOf 注释。
-          if (isSubagentOf(agent, ctx.agents)) {
+          // ⚠️ 兼容取 ctx.agents：notifier 的 inject 未声明 "agents"（宿主不一定装配），
+          // 真实 cordis 下直接读 ctx.agents 属性会抛 "cannot get property \"agents\"
+          // without inject"，导致完成判定的主任务分支永远到不了（本次「任务完成不
+          // 通知」回归的根因）。故先容错取：属性可读则用（测试 fake ctx 直接注入
+          // agents 的场景），抛错则回退 ctx.get("agents")（容错方法，服务不可得返回
+          // undefined 亦不抛，isSubagentOf 按 undefined 保守回落主任务分支）。
+          let _isSub = false;
+          let agents: SubagentOwnership | undefined;
+          try {
+            agents = (ctx as { agents?: SubagentOwnership }).agents;
+          } catch {
+            agents = undefined;
+          }
+          if (agents === undefined && typeof ctx.get === "function") {
+            try {
+              agents = ctx.get("agents") as SubagentOwnership | undefined;
+            } catch {
+              agents = undefined;
+            }
+          }
+          try {
+            _isSub = isSubagentOf(agent, agents);
+          } catch {
+            _isSub = false;
+          }
+          if (_isSub) {
             if (current.notifySubagentDone) enqueueDone("subagent-done", taskTitle, durationMs);
           } else if (current.notifyTaskDone) {
             enqueueDone("done", taskTitle, durationMs);

@@ -1,8 +1,6 @@
 /**
- * dsh-notifier — 宿主端辅助函数（原 monorepo shared/host-utils.js + shared/loopback.js，
- * 已内联为自包含模块，脱离 dsh-plugin-hub 依赖）。
+ * dsh-notifier — 宿主端辅助函数（自包含，无上游仓库依赖）。
  *
- * 单一事实来源语义与 monorepo shared 严格一致，避免各插件逐字复制漂移：
  * - writeJson：统一带 referrer-policy 头（防 referrer 泄露）；
  * - readBody：兼容 Node 事件流（data/end）与 async-iterator 桩（测试用）两种形态，
  *   limit 由调用方显式传入；

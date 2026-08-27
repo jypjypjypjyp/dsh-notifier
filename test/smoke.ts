@@ -2,7 +2,7 @@
 /**
  * dsh-notifier — 宿主端冒烟测试入口（fake ctx，无网络）。
  *
- * 测试按功能域拆分（#18 方案C），本文件只做顺序聚合——ESM 按声明序
+ * 测试按功能域拆分（方案 C），本文件只做顺序聚合——ESM 按声明序
  * 求值，各用例文件的顶层断言依序执行；单文件职责见各文件头注释：
  *
  * - unit-config.test.ts     配置归一化 / 免打扰判定（parseHHMM、isInQuietHours）
@@ -27,7 +27,7 @@ import "./e2e-done.test.ts";
 import "./e2e-interrupt.test.ts";
 import "./e2e-question-turn.test.ts";
 
-// e2e：边缘路径与生命周期清理（#82 批次 4 热点补强）
+// e2e：边缘路径与生命周期清理（批次 4 热点补强）
 import "./e2e-edge.test.ts";
 
 // e2e：HTTP 路由 + 两端契约

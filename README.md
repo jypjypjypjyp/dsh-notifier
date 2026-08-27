@@ -1,8 +1,10 @@
-# @wingsky-1/dsh-notifier
-[![npm](https://img.shields.io/npm/v/@wingsky-1/dsh-notifier)](https://www.npmjs.com/package/@wingsky-1/dsh-notifier)
-[![GitHub Releases](https://img.shields.io/github/v/release/wingsky-1/dsh-notifier)](https://github.com/wingsky-1/dsh-notifier/releases)
+> 🍴 Fork 自 [wingsky-1/dsh-notifier](https://github.com/wingsky-1/dsh-notifier)（原包 `@wingsky-1/dsh-notifier`）。
 
-审批/完成/错误事件通知：人不在浏览器前也能收到提醒。
+# @jypjypjypjyp/dsh-notifier
+[![npm](https://img.shields.io/npm/v/@jypjypjypjyp/dsh-notifier)](https://www.npmjs.com/package/@jypjypjypjyp/dsh-notifier)
+[![GitHub Releases](https://img.shields.io/github/v/release/jypjypjypjyp/dsh-notifier)](https://github.com/jypjypjypjyp/dsh-notifier/releases)
+
+审批/完成/错误事件通知：人不在浏览器前也能收到提醒。**独立 DSH 插件**——源码与构建自包含（`src/` + `scripts/build.sh`），不依赖任何上游插件仓库。
 
 ## 安装
 
@@ -11,19 +13,19 @@
 ### 安装插件（add）
 
 ```sh
-dsh plugin --profile web add @wingsky-1/dsh-notifier
+dsh plugin --profile web add @jypjypjypjyp/dsh-notifier
 ```
 
 ### 卸载插件（remove）
 
 ```sh
-dsh plugin --profile web remove @wingsky-1/dsh-notifier
+dsh plugin --profile web remove @jypjypjypjyp/dsh-notifier
 ```
 
 ### 更新插件（update）
 
 ```sh
-dsh plugin --profile web update @wingsky-1/dsh-notifier
+dsh plugin --profile web update @jypjypjypjyp/dsh-notifier
 ```
 
 > 安装 / 卸载 / 更新后都需**重启一次** `dsh web`（bundle 层只在启动时组合）生效。
@@ -33,7 +35,7 @@ dsh plugin --profile web update @wingsky-1/dsh-notifier
 省略 `@版本号` 即安装默认 latest（推荐）。仅当 registry 尚未同步到最新、或最新版在你的环境有问题时，在包名后追加 `@版本号`：
 
 ```sh
-dsh plugin --profile web add @wingsky-1/dsh-notifier@<版本号>
+dsh plugin --profile web add @jypjypjypjyp/dsh-notifier@<版本号>
 ```
 
 ### 未全局安装 dsh
@@ -41,9 +43,9 @@ dsh plugin --profile web add @wingsky-1/dsh-notifier@<版本号>
 若本机没有全局 `dsh` 命令，用 `npx` 临时拉起（底层调用 `pnpm`，仍需本机装好 `pnpm` 与 `Node.js`）：
 
 ```sh
-npx @deepseek-ai/dsh plugin --profile web add @wingsky-1/dsh-notifier
-npx @deepseek-ai/dsh plugin --profile web remove @wingsky-1/dsh-notifier
-npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
+npx @deepseek-ai/dsh plugin --profile web add @jypjypjypjyp/dsh-notifier
+npx @deepseek-ai/dsh plugin --profile web remove @jypjypjypjyp/dsh-notifier
+npx @deepseek-ai/dsh plugin --profile web update @jypjypjypjyp/dsh-notifier
 ```
 
 ## 部署与访问方式（重要）
@@ -68,7 +70,7 @@ npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
 
 - **向你提问**（默认开）：`ask_user_question` / GUI 提问弹窗触发时通知
 - **审批提醒**：真实审批路径 `approval/request` 触发时通知，含任务标题、工具中文名、申请理由与操作提示
-- **完成提醒**：任务从运行到空闲（`agent/status` running → idle）时通知，含任务标题与耗时；完成判定为双源——idle 时从会话事件快照回读最新 `turn/end`，与 `session/event` 推送流记忆的最新 `turn/end` 取新者为结束证据（issue #272：快照一次性读滞后不再固化为永久静默，同一轮次两源只通知一次，判定被跳过时输出可观测 warn 日志）；子代理完成走独立开关 `notifySubagentDone`（默认关；子代理含 `origin: subagent` 的 spawn 型与运行时归属成立的 fork 型委派——无归属的 fork 主线会话不受影响，仍报主任务完成）；用户停止生成/中断/任务失败/被阻塞时不通知完成（本轮 `turn/end` reason 为 `aborted`/`interrupted`/`error`/`blocked` 时固定静默——失败任务由错误提醒单独负责「任务出错」，避免同一轮既报错又误报完成）
+- **完成提醒**：任务从运行到空闲（`agent/status` running → idle）时通知，含任务标题与耗时；完成判定为双源——idle 时从会话事件快照回读最新 `turn/end`，与 `session/event` 推送流记忆的最新 `turn/end` 取新者为结束证据（快照一次性读滞后不再固化为永久静默，同一轮次两源只通知一次，判定被跳过时输出可观测 warn 日志）；子代理完成走独立开关 `notifySubagentDone`（默认关；子代理含 `origin: subagent` 的 spawn 型与运行时归属成立的 fork 型委派——无归属的 fork 主线会话不受影响，仍报主任务完成）；用户停止生成/中断/任务失败/被阻塞时不通知完成（本轮 `turn/end` reason 为 `aborted`/`interrupted`/`error`/`blocked` 时固定静默——失败任务由错误提醒单独负责「任务出错」，避免同一轮既报错又误报完成）
 - **错误提醒**：任务出错（`agent/error`）时通知，含任务标题、出错轮次/步骤、错误信息（前 300 字符）；同类错误 60 秒窗口内自动合并
 - **轮次完成**（默认关）：`agent/turn-stopping` 时通知
 - **双通道**：
@@ -136,7 +138,7 @@ DSH 安装实测版本 junction-link（与运行时一致）。对插件做类�
   - **已知取舍（不修正则）**：40 位 git commit SHA 与「≥24 位 hex 密钥」同形不可区分，会被通用长串规则打码为 `<token>`（如 `HEAD detached at abc0123…` → `HEAD detached at <token>`），损失错误消息的可查性。接受误伤换取密钥覆盖面：SHA 场景白名单不可靠（40 hex 与真密钥无法凭形态区分），故仅在此记录为已知行为
   - 已证伪不收录（高频误伤）：IPv4（UA 版本号同形）、手机号（订单号同形）、信用卡（13 位毫秒时间戳 100% 命中）
 - 系统通知失败静默（仅日志），不影响主流程；原生二进制缺失/不可执行（ENOENT 等）
-  会被 `error` 事件接住，**绝不冒泡成 unhandled error 把宿主进程打挂**（见 issue #1）
+  会被 `error` 事件接住，**绝不冒泡成 unhandled error 把宿主进程打挂**
 - **两个通道到达的机器不同（别混淆）**：
   - **浏览器通知**推到**你正在用的浏览器客户端**（Mac/手机都算），由浏览器 Notification API 弹出原生通知；需要授权、且默认页面隐藏时才弹（「设置 → 插件配置」可开「页面可见也弹」）。无论 dsh web 跑在哪台机器，只要浏览器通知允许，你都能在自己的 Mac 上收到。
   - **系统通知（宿主 toast）**弹在 **dsh web 运行的宿主机器**桌面：若 dsh web 跑在 Linux 服务器（headless，无桌面会话）或别的机器上，toast 会出现在**那台服务器**而不是你的 Mac——health 会体现该通道是否可用。想让系统 toast 也出现在你的 Mac 上，需把 dsh web 直接跑在你的 Mac 上（此时走 macOS 的 `osascript`）；macOS 无 `notify-send`，系统通知已用系统自带的 `osascript` 实现（无需安装）
@@ -144,7 +146,7 @@ DSH 安装实测版本 junction-link（与运行时一致）。对插件做类�
   才有）；iOS 上可用通道为「页面可见时横幅 + 提示音」及 HTTPS+A2HS 后的系统通知
 - 浏览器通知需要**安全上下文**（HTTPS 或 localhost）；局域网 HTTP 访问自动走降级通道（横幅/提示音/标题提醒）
 - 浏览器通知权限为手势内请求（首次点击页面任意位置时；不再有侧边栏入口/面板按钮）
-- Windows 系统通知通过 PowerShell WinRT 脚本实现，命令以参数数组传递、标题/正文打包为 base64(UTF-8 JSON) 经单一 payload 参数传入（无 shell 拼接面，且规避 PS 5.1 命令行参数解析歧义，见 issue #238）；脚本启动时幂等注册 AppUserModelId `DSH.dsh-notifier`（HKCU，无需管理员权限）——未注册的 AUMID 在 Win10/11 上 toast 会被系统静默丢弃。AUMID 采用 `Company.Product` 形态，避免在公共命名空间（`HKCU\SOFTWARE\Classes\AppUserModelId`）与其他同名软件冲突互覆；历史版本注册的旧键 `DSH` 残留无害（仅一个空注册表条目，不影响新 toast），如需清理可手动执行 `Remove-Item -Path "HKCU:\SOFTWARE\Classes\AppUserModelId\DSH"`
+- Windows 系统通知通过 PowerShell WinRT 脚本实现，命令以参数数组传递、标题/正文打包为 base64(UTF-8 JSON) 经单一 payload 参数传入（无 shell 拼接面，且规避 PS 5.1 命令行参数解析歧义）；脚本启动时幂等注册 AppUserModelId `DSH.dsh-notifier`（HKCU，无需管理员权限）——未注册的 AUMID 在 Win10/11 上 toast 会被系统静默丢弃。AUMID 采用 `Company.Product` 形态，避免在公共命名空间（`HKCU\SOFTWARE\Classes\AppUserModelId`）与其他同名软件冲突互覆；历史版本注册的旧键 `DSH` 残留无害（仅一个空注册表条目，不影响新 toast），如需清理可手动执行 `Remove-Item -Path "HKCU:\SOFTWARE\Classes\AppUserModelId\DSH"`
 
 ## 验证
 

@@ -145,9 +145,9 @@ export async function waitForHistory(historyRoute, predicate, timeoutMs = 2000) 
  * opts.turnEndKind：reason.kind（默认 completed，aborted 模拟用户中断）；
  * opts.subagent：true 模拟子代理（写入 origin:'subagent'，与 DSH childSessionMeta 一致）；
  * opts.parentSession：模拟 fork/派生会话（只写 parentSession、不带 origin；
- *   是否委派 worker 由运行时归属面 fakeAgents 决定——issue #49）；
+ *   是否委派 worker 由运行时归属面 fakeAgents 决定）；
  * opts.seedLength：header.seedLength（fork 型委派持久化形态含该字段，
- *   完成判定不含它——仅用于构造注释宣称的完整 header 形态，issue #199 P2-5）；
+ *   完成判定不含它——仅用于构造注释宣称的完整 header 形态）；
  * opts.depth：header.delegationDepth（仅作附加，不作子代理判据）；
  * opts.cwd：header.cwd（模拟 headless CLI 会话「header 仅 {cwd}」形态）。
  */
@@ -173,7 +173,7 @@ export function agentWithTitle(id, title, opts = {}) {
 }
 
 /**
- * 运行时归属模拟面（issue #49）：ctx.agents 判定所需最小实现。
+ * 运行时归属模拟面：ctx.agents 判定所需最小实现。
  * @param liveIds live registry 中存在的父/子 agent id 数组。
  * @param ownedPairs 归属关系对 [childId, ownerId]：isOwnedBy(childId, owner)
  *   仅当 owner 在 live 且存在对应关系对时返回 true。
@@ -197,7 +197,7 @@ export async function waitMergeWindow() {
 }
 
 /**
- * session/event 回调的 turn/end 载荷构造（issue #272 双源测试用）。
+ * session/event 回调的 turn/end 载荷构造（双源测试用）。
  * 形态对齐官方 SessionEvent 信封的最小判定子集：{ type, data: { turn, reason } }。
  */
 export function turnEndEvent(turn, kind = "completed") {

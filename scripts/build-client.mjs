@@ -145,7 +145,7 @@ function ensureUtf8Bom(filePath) {
 /**
  * 复制 src/ 下非代码资源（toast.ps1 等）→ lib/（运行时从 lib 同目录定位）。
  * .ps1 资源强制 UTF-8 BOM（Windows PowerShell 5.1 对无 BOM 文件按 ANSI 码页解码，
- * 非 ASCII 注释即解析失败；issue #238）。
+ * 非 ASCII 注释即解析失败）。
  */
 function copyClientResources() {
   const srcDir = join(PKG_DIR, 'src')

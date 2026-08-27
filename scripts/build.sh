@@ -1,6 +1,6 @@
 #!/bin/bash
 # dsh-notifier 独立构建（自包含）：junction-link DSH 类型层（import type）+ tsc host + esbuild client。
-# 不依赖 dsh-plugin-hub 的 scripts/、tsconfig.base、shared/。
+# 不依赖上游 monorepo 的 scripts/、tsconfig.base、shared/（本仓库自带全部构建脚本）。
 # 类型层 @deepseek-ai/* 从 DSH core install 实测版本 junction-link（与运行时一致，
 # 避免公共 npm 版本漂移）；tsc/esbuild/@types/node 为本仓库 devDependencies。
 set -euo pipefail

@@ -1,8 +1,10 @@
-# @wingsky-1/dsh-notifier
-[![npm](https://img.shields.io/npm/v/@wingsky-1/dsh-notifier)](https://www.npmjs.com/package/@wingsky-1/dsh-notifier)
-[![GitHub Releases](https://img.shields.io/github/v/release/wingsky-1/dsh-notifier)](https://github.com/wingsky-1/dsh-notifier/releases)
+> 🍴 Forked from [wingsky-1/dsh-notifier](https://github.com/wingsky-1/dsh-notifier) (original package `@wingsky-1/dsh-notifier`).
 
-Notifications for approval / completion / error events: get alerted even when you are away from the browser.
+# @jypjypjypjyp/dsh-notifier
+[![npm](https://img.shields.io/npm/v/@jypjypjypjyp/dsh-notifier)](https://www.npmjs.com/package/@jypjypjypjyp/dsh-notifier)
+[![GitHub Releases](https://img.shields.io/github/v/release/jypjypjypjyp/dsh-notifier)](https://github.com/jypjypjypjyp/dsh-notifier/releases)
+
+Notifications for approval / completion / error events: get alerted even when you are away from the browser. A **standalone DSH plugin** — self-contained source and build (`src/` + `scripts/build.sh`), no dependency on any upstream plugin repo.
 
 ## Installation
 
@@ -12,19 +14,19 @@ without a global install, see "Without a global dsh install" below).
 ### Install plugins (add)
 
 ```sh
-dsh plugin --profile web add @wingsky-1/dsh-notifier
+dsh plugin --profile web add @jypjypjypjyp/dsh-notifier
 ```
 
 ### Uninstall plugins (remove)
 
 ```sh
-dsh plugin --profile web remove @wingsky-1/dsh-notifier
+dsh plugin --profile web remove @jypjypjypjyp/dsh-notifier
 ```
 
 ### Update plugins (update)
 
 ```sh
-dsh plugin --profile web update @wingsky-1/dsh-notifier
+dsh plugin --profile web update @jypjypjypjyp/dsh-notifier
 ```
 
 > After install / uninstall / update, **restart `dsh web` once** (bundle layers are only
@@ -35,7 +37,7 @@ dsh plugin --profile web update @wingsky-1/dsh-notifier
 Omitting `@version` installs the default latest (recommended). Only when the registry has not synced the latest yet, or the latest has issues in your environment, append `@version` to the package name:
 
 ```sh
-dsh plugin --profile web add @wingsky-1/dsh-notifier@<version>
+dsh plugin --profile web add @jypjypjypjyp/dsh-notifier@<version>
 ```
 
 ### Without a global dsh install
@@ -44,9 +46,9 @@ If there is no global `dsh` command on the machine, use `npx` to run it on the f
 calls `pnpm` under the hood, so `pnpm` and `Node.js` must still be installed locally):
 
 ```sh
-npx @deepseek-ai/dsh plugin --profile web add @wingsky-1/dsh-notifier
-npx @deepseek-ai/dsh plugin --profile web remove @wingsky-1/dsh-notifier
-npx @deepseek-ai/dsh plugin --profile web update @wingsky-1/dsh-notifier
+npx @deepseek-ai/dsh plugin --profile web add @jypjypjypjyp/dsh-notifier
+npx @deepseek-ai/dsh plugin --profile web remove @jypjypjypjyp/dsh-notifier
+npx @deepseek-ai/dsh plugin --profile web update @jypjypjypjyp/dsh-notifier
 ```
 
 ## Deployment & how to access (important)
@@ -72,7 +74,7 @@ Pick one of the following access forms (all require loopback check + secure cont
 
 - **Ask you a question** (on by default): notifies when `ask_user_question` / the GUI question popup is triggered
 - **Approval reminder**: notifies when the real approval path `approval/request` is triggered, including task title, tool display name (Chinese), request reason, and an action hint
-- **Completion reminder**: notifies when a task transitions from running to idle (`agent/status` running → idle), including task title and elapsed time; completion detection is dual-source — on idle, the latest `turn/end` read back from the session event snapshot is merged with the latest `turn/end` remembered from the `session/event` push stream, taking the newer as this turn's closure evidence (issue #272: a one-off snapshot read lag no longer solidifies into permanent silence; both sources for the same turn notify only once, and skipped decisions emit an observable warn log); subagent completion uses a separate toggle `notifySubagentDone` (off by default; subagents include spawned ones with `origin: subagent` and fork-delegated workers whose runtime ownership holds — fork mainline sessions without ownership are unaffected and still report as main-task completion); no completion notification is sent when the user stops generation / interrupts / the task fails / the task is blocked (when this turn's `turn/end` reason is `aborted`/`interrupted`/`error`/`blocked` it is always silent — failed tasks are handled separately by the error reminder's "task errored" so the same turn never both errors and falsely reports completion)
+- **Completion reminder**: notifies when a task transitions from running to idle (`agent/status` running → idle), including task title and elapsed time; completion detection is dual-source — on idle, the latest `turn/end` read back from the session event snapshot is merged with the latest `turn/end` remembered from the `session/event` push stream, taking the newer as this turn's closure evidence ( a one-off snapshot read lag no longer solidifies into permanent silence; both sources for the same turn notify only once, and skipped decisions emit an observable warn log); subagent completion uses a separate toggle `notifySubagentDone` (off by default; subagents include spawned ones with `origin: subagent` and fork-delegated workers whose runtime ownership holds — fork mainline sessions without ownership are unaffected and still report as main-task completion); no completion notification is sent when the user stops generation / interrupts / the task fails / the task is blocked (when this turn's `turn/end` reason is `aborted`/`interrupted`/`error`/`blocked` it is always silent — failed tasks are handled separately by the error reminder's "task errored" so the same turn never both errors and falsely reports completion)
 - **Error reminder**: notifies when a task errors (`agent/error`), including task title, the errored turn/step, and the error message (first 300 chars); identical errors within a 60-second window are auto-merged
 - **Turn completion** (off by default): notifies on `agent/turn-stopping`
 - **Dual channels**:
@@ -142,14 +144,14 @@ against the plugin need a DSH install (or set `DSH_CORE` to a node_modules conta
   - **Approval reasons and question texts** are redacted too (truncated to 120 chars) — these most often embed command echo and credential fragments
   - **Known trade-off (rule intentionally unchanged)**: 40-char git commit SHAs are indistinguishable from "≥24-char hex secrets" and get masked to `<token>` by the generic long-run rule (e.g. `HEAD detached at abc0123…` → `HEAD detached at <token>`), losing the lookup value of error messages. The false positive is accepted in exchange for secret coverage: a SHA-scenario whitelist would be unreliable (40-hex cannot be told apart from real secrets by shape), so this is documented as known behavior only
   - Proven false-positive-prone, deliberately not covered: IPv4 (same shape as UA version numbers), phone numbers (same shape as order IDs), credit cards (13-digit millisecond timestamps match at 100%)
-- System notification failures are silent (logs only), and do not affect the main flow; a missing / non-executable native binary (ENOENT etc.) is caught by the `error` event and **never bubbles up as an unhandled error that crashes the host process** (see issue #1)
+- System notification failures are silent (logs only), and do not affect the main flow; a missing / non-executable native binary (ENOENT etc.) is caught by the `error` event and **never bubbles up as an unhandled error that crashes the host process**
 - **The two channels are delivered to different machines (don't confuse them)**:
   - **Browser notifications** are pushed to **the browser client you are actually using** (your Mac / phone both count), and pop a native notification via the browser's Notification API; they require permission and by default only pop when the page is hidden (Settings → Plugin Config can enable "also when visible"). No matter which machine dsh web runs on, as long as browser notifications are allowed you receive them on your own Mac.
   - **System notifications (host toast)** are popped on the desktop of **the machine dsh web runs on**: if dsh web runs on a Linux server (headless, no desktop session) or some other machine, the toast appears on **that server**, not your Mac — health reflects whether the channel is available. To also get the system toast on your Mac, run dsh web directly on your Mac (it then uses macOS `osascript`); macOS has no `notify-send`, and the system notification is already implemented via `osascript` (zero dependencies, nothing to install)
 - **iOS difference**: Safari's normal tabs have no Web Notifications API (only the "Add to Home Screen" PWA does); on iOS the available channels are "in-page banner + sound when the page is visible" and system notifications after HTTPS + A2HS
 - Browser notifications require a **secure context** (HTTPS or localhost); LAN HTTP access automatically routes through the fallback channel (banner / sound / title reminder)
 - Browser notification permission is requested within a gesture (on the first click anywhere in the page; there is no longer a sidebar "Notifications" entry / panel button)
-- Windows system notifications are implemented via a PowerShell WinRT script, with the command passed as a parameter array and title/body packed into a single base64 (UTF-8 JSON) payload argument (no shell concatenation surface, and immune to PS 5.1 command-line argument parsing ambiguities, see issue #238); the script idempotently registers the AppUserModelId `DSH.dsh-notifier` on startup (HKCU, no admin required) — an unregistered AUMID gets toasts silently dropped by Windows 10/11. The AUMID follows the `Company.Product` convention to avoid collisions in the public namespace (`HKCU\SOFTWARE\Classes\AppUserModelId`) where same-named apps overwrite each other's display names; a legacy `DSH` key registered by older versions is harmless leftover (just an empty registry entry, does not affect new toasts) and can be removed manually with `Remove-Item -Path "HKCU:\SOFTWARE\Classes\AppUserModelId\DSH"` if desired
+- Windows system notifications are implemented via a PowerShell WinRT script, with the command passed as a parameter array and title/body packed into a single base64 (UTF-8 JSON) payload argument (no shell concatenation surface, and immune to PS 5.1 command-line argument parsing ambiguities); the script idempotently registers the AppUserModelId `DSH.dsh-notifier` on startup (HKCU, no admin required) — an unregistered AUMID gets toasts silently dropped by Windows 10/11. The AUMID follows the `Company.Product` convention to avoid collisions in the public namespace (`HKCU\SOFTWARE\Classes\AppUserModelId`) where same-named apps overwrite each other's display names; a legacy `DSH` key registered by older versions is harmless leftover (just an empty registry entry, does not affect new toasts) and can be removed manually with `Remove-Item -Path "HKCU:\SOFTWARE\Classes\AppUserModelId\DSH"` if desired
 
 ## Verification
 

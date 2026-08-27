@@ -86,6 +86,8 @@ function refreshConfig() {
 }
 
 var notified: any = [];
+/** 浏览器端自检统计：SSE 收到帧数 / 已弹窗数（设置卡「浏览器通知诊断」读取）。 */
+var diagStats: any = { frames: 0, shown: 0 };
 
 var TAB_ID = Math.random().toString(36).slice(2);
 var MASTER_KEY = "dsh-notifier:master";
@@ -190,6 +192,7 @@ function showNotification(kind: any, title: any, message: any) {
       notification.onclick = function () { window.focus(); notification.close(); };
       notified.push(notification);
       if (notified.length > 5) notified.shift().close();
+      diagStats.shown += 1;
       return;
     } catch (error) { /* 降级为页面内提醒 */ }
   }
@@ -244,6 +247,7 @@ function startEvents() {
           if (data.type === "ping") return;
           if (data.type === "notify") {
             if (typeof data.seq === "number") { if (lastSeq > 0 && data.seq <= lastSeq) return; lastSeq = data.seq; }
+            diagStats.frames += 1;
             handleNotifyFrame(data);
           }
         } catch (error) { /* 忽略 */ }
@@ -270,6 +274,7 @@ var labelStyle = { flex: "1", fontSize: "13px", color: "var(--dsw-alias-label-pr
 var inputStyle = { width: "96px", background: "var(--dsw-alias-bg-layer-1,#f5f6f8)", color: "var(--dsw-alias-label-primary,#1f2329)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 8px", boxSizing: "border-box" };
 var timeStyle = { background: "var(--dsw-alias-bg-layer-1,#f5f6f8)", color: "var(--dsw-alias-label-primary,#1f2329)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 8px" };
 var noteStyle = { fontSize: "11px", color: "var(--dsw-alias-label-tertiary,#8a919c)", lineHeight: "1.6", marginTop: "8px" };
+var btnStyle = { flex: "none", appearance: "none", font: "inherit", fontSize: "12px", cursor: "pointer", color: "var(--dsw-alias-label-primary,#1f2329)", background: "var(--dsw-alias-bg-layer-3,#f5f6f8)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 10px" };
 // 卡片壳（对齐 dsh-advisor 的 settings.plugin.item 卡片：header 标题+描述+chevron，body 可折叠）。
 var cardStyle = { border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", background: "var(--dsw-alias-bg-layer-3,#f5f6f8)", borderRadius: "12px", overflow: "hidden" };
 var headerStyle = { appearance: "none", width: "100%", font: "inherit", color: "inherit", textAlign: "left", cursor: "pointer", background: "transparent", border: "0", alignItems: "center", gap: "12px", padding: "14px 16px", display: "flex" };
@@ -286,6 +291,30 @@ function ToggleRow(props: any) {
   );
 }
 
+/** 浏览器通知自检（点击触发）：逐项报告能力/权限，授权路径异步回报结果。 */
+function runNotifySelfTest(setResult: any) {
+  var text = "";
+  if (!("Notification" in window)) text = "✗ 当前浏览器不支持 Notification API";
+  else if (!isSecureContext()) text = "✗ 非安全上下文（需 HTTPS 或 127.0.0.1/localhost）";
+  else if (Notification.permission === "denied") text = "✗ 权限已被拒绝——到浏览器站点设置→通知→允许";
+  else if (Notification.permission === "default") {
+    text = "~ 权限尚未请求，正在发起授权…（请留意浏览器弹出的授权询问）";
+    try {
+      Notification.requestPermission().then(function (p: string) {
+        setResult("授权结果: " + p + (p === "granted" ? "（可再点一次自检）" : ""));
+      }).catch(function () { /* 忽略 */ });
+    } catch (e) { /* 忽略 */ }
+  } else {
+    try {
+      var n = new Notification("DSH：浏览器通知自检", { body: "看到即链路正常 ✓", icon: NOTIFY_ICON });
+      n.onclick = function () { window.focus(); n.close(); };
+      diagStats.shown += 1;
+      text = "✓ 已创建浏览器通知（若屏幕未弹出，是浏览器/系统级通知被禁用）";
+    } catch (e) { text = "✗ 创建通知异常: " + (e && e.message ? e.message : String(e)); }
+  }
+  setResult(text);
+}
+
 function NotifierSettingsCard(props: any) {
   var pair = React.useState(function () { return { loading: true, cfg: null }; });
   var st = pair[0];
@@ -293,6 +322,9 @@ function NotifierSettingsCard(props: any) {
   var openPair = React.useState(false);
   var open = openPair[0];
   var setOpen = openPair[1];
+  var testPair = React.useState("");
+  var testRes = testPair[0];
+  var setTestRes = testPair[1];
   React.useEffect(function () {
     fetch(ROUTES.config, { headers: { accept: "application/json" } })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
@@ -322,6 +354,22 @@ function NotifierSettingsCard(props: any) {
   children.push(React.createElement("div", { style: groupTitleStyle }, "通知通道"));
   [["systemNotify", "系统通知"], ["browserNotify", "浏览器通知"], ["notifyWhenVisible", "页面可见时也弹"], ["notifySound", "通知声音"]]
     .forEach(function (kv) { children.push(React.createElement(ToggleRow, { label: kv[1], checked: cfg[kv[0]], onChange: function (v: boolean) { set(kv[0], v); } })); });
+
+  // ---- 浏览器通知诊断（自检：权限状态 / 安全上下文 / SSE 接收 / 测试弹窗）----
+  children.push(React.createElement("div", { style: groupTitleStyle }, "浏览器通知诊断"));
+  var hasApi = "Notification" in window;
+  var diagText =
+    "安全上下文: " + (isSecureContext() ? "✓" : "✗（需 HTTPS 或 127.0.0.1/localhost）") +
+    " ｜ Notification: " + (hasApi ? "✓" : "✗") +
+    " ｜ 权限: " + (hasApi ? Notification.permission : "n/a") +
+    " ｜ 本页收到帧: " + diagStats.frames +
+    " ｜ 已弹: " + diagStats.shown;
+  children.push(React.createElement("div", { style: noteStyle }, diagText));
+  children.push(React.createElement("div", { style: rowStyle },
+    React.createElement("span", { style: labelStyle }, "浏览器通知自检（点击触发）"),
+    React.createElement("button", { type: "button", style: btnStyle, onClick: function () { runNotifySelfTest(setTestRes); } }, "自检")
+  ));
+  if (testRes) children.push(React.createElement("div", { style: noteStyle }, testRes));
 
   children.push(React.createElement("div", { style: groupTitleStyle }, "免打扰时段"));
   children.push(React.createElement(ToggleRow, { label: "启用", checked: qh.enabled, onChange: function (v: boolean) { setQh({ enabled: v }); } }));

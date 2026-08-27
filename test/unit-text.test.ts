@@ -23,7 +23,7 @@ assert.equal(prettyToolName("mcp__srv__a__b"), 'MCP 服务器 "srv" 的工具 "a
 assert.equal(prettyToolName(undefined), "?");
 
 // buildSystemCommand：Windows/macOS/Linux 参数形态（smoke 断言 spawn 参数）
-// Windows（issue #238）：固定前缀 + 单一 base64 payload token；前缀用 deepEqual
+// Windows：固定前缀 + 单一 base64 payload token；前缀用 deepEqual
 // 全序列快照（includes 片段断言抓不住多余/错位 token）。
 const decodePayload = (argv: string[]) => JSON.parse(Buffer.from(argv[argv.length - 1], "base64").toString("utf8"));
 const winArgs = buildSystemCommand("win32", "标题", "内容 -x", { silent: true, toastScript: "t.ps1" });
@@ -69,7 +69,7 @@ assert.equal(
   "标题截断 40 字符"
 );
 
-// sessionTitleOf 接入脱敏链（issue #30）：标题源自会话内容，进入通知与历史前
+// sessionTitleOf 接入脱敏链：标题源自会话内容，进入通知与历史前
 // 敏感片段必须打码；正常标题不含敏感特征、脱敏后原样透传保持可读
 assert.ok(
   !sessionTitleOf({ session: { events: [{ type: "session/title", data: { title: `修复 ${"a".repeat(48)} 泄漏` } }] } })!.includes("aaaa"),

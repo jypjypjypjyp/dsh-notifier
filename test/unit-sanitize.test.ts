@@ -2,7 +2,7 @@
 /**
  * dsh-notifier — unit：错误文本脱敏（sanitizeErrorText）。
  *
- * 覆盖：路径/令牌/密钥打码 + 截断；issue #6 扩展（GitHub PAT / PEM 私钥 /
+ * 覆盖：路径/令牌/密钥打码 + 截断；扩展（GitHub PAT / PEM 私钥 /
  * 连接串凭据 / 邮箱）；规则顺序硬约束回归；FP 证伪回归（已删规则的误伤
  * 形态必须保持原样）；性能护栏（防灾难性回溯）；PEM 限窗/赋值分隔符/amqps
  * 评审修复回归。
@@ -30,7 +30,7 @@ assert.ok(!sanitizeErrorText("open /etc/passwd denied").includes("/etc"), "/etc 
 // 防误伤：普通含下划线/连字符的英文单词不应被 JWT/AKIA 规则误打码
 assert.equal(sanitizeErrorText("the-key_is-here and also_fine"), "the-key_is-here and also_fine", "普通文本不被 JWT 规则误伤");
 
-// ---- issue #6 脱敏扩展：GitHub PAT / PEM 私钥 / 连接串凭据 / 邮箱 ----
+// ---- 脱敏扩展：GitHub PAT / PEM 私钥 / 连接串凭据 / 邮箱 ----
 // GitHub PAT classic（ghp/gho/ghu/ghs/ghr + 恰 36 位字母数字）
 const patCore36 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 assert.equal(sanitizeErrorText(`token ghp_${patCore36} end`), "token <token> end", "GitHub PAT classic 打码");
@@ -98,13 +98,13 @@ assert.equal(
   "mysql://<redacted>@db.example.com down",
   "DSN 与邮箱规则顺序回归"
 );
-// 尖括号引用形态（issue #30）：双断言放行 <user@host>，不再整体漏网
+// 尖括号引用形态：双断言放行 <user@host>，不再整体漏网
 assert.equal(
   sanitizeErrorText("From: John <john.doe@corp.example.com> signed"),
   "From: John <<email>> signed",
   "尖括号包裹的真实邮箱正常打码"
 );
-// 占位符不被二次破坏（issue #30）：裸 <redacted>@真实域名 形态必须原样保留
+// 占位符不被二次破坏：裸 <redacted>@真实域名 形态必须原样保留
 assert.equal(
   sanitizeErrorText("<redacted>@db.example.com down"),
   "<redacted>@db.example.com down",

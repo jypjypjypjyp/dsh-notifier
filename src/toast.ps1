@@ -1,4 +1,4 @@
-﻿param(
+param(
   [string]$Title = "DSH",
   [string]$Message = "",
   [string]$Payload = "",
@@ -7,7 +7,7 @@
 # dsh-notifier 系统 toast（Windows WinRT，PowerShell 5.1+ 兼容）。
 # 失败静默退出（exit 1），宿主只记录日志；不抛出阻塞调用方。
 #
-# 参数优先级（issue #238）：宿主端经 -Payload 传 base64(UTF-8 JSON {title,message,silent})。
+# 参数优先级：宿主端经 -Payload 传 base64(UTF-8 JSON {title,message,silent})。
 # 单 token 纯 base64 字母表（永不出现在 token 首、无空格无引号），规避 PS 5.1 -File
 # 的全部命令行解析歧义：-Name=Value 等号形式不绑定、裸 dash token 被误认成参数名、
 # 嵌入引号经两层 quoting 错配。同 PowerShell 官方 -EncodedCommand 思路。
