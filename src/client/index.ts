@@ -13,6 +13,7 @@
 // 浏览器半区干净模块：只导出 apply/inject；React 为 host 注入 external（factory require）。
 import STYLE from "./style.css";
 import React from "react";
+import { IconChevronDownOutline14 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 var ROUTES = {
   config: "/api/dsh-notifier/config",
@@ -409,7 +410,7 @@ function NotifierSettingsCard(props: any) {
         React.createElement("span", { style: nameStyle }, "通知"),
         React.createElement("span", { style: descriptionStyle }, "审批 / 完成 / 错误事件提醒")
       ),
-      React.createElement("span", { style: Object.assign({}, chevronStyle, open ? { transform: "rotate(180deg)" } : {}) }, "▾")
+      React.createElement("span", { style: Object.assign({ display: "inline-flex" }, chevronStyle, open ? { transform: "rotate(180deg)" } : {}) }, React.createElement(IconChevronDownOutline14))
     ),
     open ? React.createElement("div", { style: bodyStyle }, children) : null
   );
