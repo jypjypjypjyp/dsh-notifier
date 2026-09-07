@@ -18,7 +18,7 @@
  *   （origin === 'subagent'，或 fork 型委派且运行时归属成立——见 message.ts
  *   isSubagentOf 双信号注释）走独立开关/事件类型 subagent-done；
  *   用户暂停/中断（turn/end reason aborted）固定静默。
- *   完成判定为双源：idle 时从 agent.session.events 快照回读
+ *   完成判定为双源：idle 时从 agent.session 事件日志快照回读
  *   最新 turn/end，与 session/event 推送流记忆的最新 turn/end 按 turn 取新者
  *   作为本轮结束证据——快照一次性读滞后不再被 lastEndedTurn 固化为永久静默；
  *   同一 turn 两源汇合于同一判定点，天然只通知一次。跳过路径输出可观测 warn。
@@ -58,10 +58,10 @@ import { buildRoutes, createSseHub, createSystemNotifier } from "./server.js";
 // 注册进 DSH 设置服务（composition entry 作为 base 层），source thunk 指向 resolved
 // scope，setSource 把生效配置回流到 current——使配置进入 DSH「设置→插件配置」范围。
 // 注意：真正的表单渲染在客户端（settings.plugin.item 卡片，fetch 型），此处 schema
-// 供设置服务 resolve/校验，不负责渲染。runtime 值导入（非 type-only）——区别于
-// 「仅 import type」的官方类型层约定；这两个模块是宿主核心，dsh-guardrail 同款。
+// 供设置服务 resolve/校验，不负责渲染。设置分区安装经 ./settings-compat.js 做
+// 特性检测（0.1.2 起 dsh-settings 移除了模块级 helper，禁止对其静态 named import）。
 import z from "@deepseek-ai/schemastery";
-import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
+import { installSettingsSection } from "./settings-compat.js";
 
 /** 稳定的 cordis 插件名。 */
 export const name = "notifier";
@@ -382,7 +382,7 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
 
   /**
    * 完成判定辅源记忆：session/event 推送流记录的 per-session
-   * 最新 turn/end。主源在 idle 时从 agent.session.events 快照回读 turn/end，
+   * 最新 turn/end。主源在 idle 时从 agent.session 事件日志快照回读 turn/end，
    * 该读是一次性快照——任何一次读滞后都会被下方 lastEndedTurn 的无条件推进
    * 固化为「后续 turn 全部已处理」的永久静默。本推送
    * 源 post-commit 逐条派发（官方 SessionEventMap 声明面），不依赖快照回读，
@@ -656,7 +656,7 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
   if (typeof (ctx as { inject?: unknown }).inject === "function") {
     // entry 用已加载的 current（文件/默认）作为 base——迁移到 settings 服务时把用户
     // 现有文件配置保留为 base 层（设置页默认值），不丢配置；用户随后可在设置页覆盖。
-    installSettingsSection(ctx, settingsNamespace("notifier"), NotifyConfigSchema, current, {
+    installSettingsSection(ctx, "notifier", NotifyConfigSchema, current, {
       setSource: (get) => {
         try {
           current = normalizeConfig(get());

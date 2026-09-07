@@ -1,2 +1,7 @@
+# 类型层 @deepseek-ai/* 是 peer（import type 编译期使用），运行期由 dsh 宿主注入；
+# 构建期由 scripts/build.sh junction-link 自 DSH core install——不走 pnpm 自动安装，
+# 否则会拉取未发布到公共 npm 的包（如 @deepseek-ai/dsh-type-meta）造成 404。
+# （pnpm 10+ 该设置从 .npmrc 迁移到本文件）
+autoInstallPeers: false
 allowBuilds:
   esbuild: true

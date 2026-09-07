@@ -23,6 +23,11 @@ fi
 if [ -z "$DSH_CORE" ]; then
   GLOBAL_ROOT="$(npm root -g 2>/dev/null || true)"
   if [ -n "$GLOBAL_ROOT" ] && [ -d "$GLOBAL_ROOT/@deepseek-ai/dsh-agent" ]; then DSH_CORE="$GLOBAL_ROOT"; fi
+  # 全局 dsh CLI 包的嵌套 node_modules（fnm/npm 全局安装形态：deps 在
+  # <global>/@deepseek-ai/dsh/node_modules 下，与 injector build.sh 同款探测）
+  if [ -z "$DSH_CORE" ] && [ -n "$GLOBAL_ROOT" ] && [ -d "$GLOBAL_ROOT/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-agent" ]; then
+    DSH_CORE="$GLOBAL_ROOT/@deepseek-ai/dsh/node_modules"
+  fi
 fi
 if [ -z "$DSH_CORE" ]; then
   PROF="$HOME/.dsh/profiles/web/node_modules"
