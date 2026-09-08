@@ -66,8 +66,8 @@ export declare function buildSystemCommand(platform: string, title: string, mess
 export declare function prettyToolName(name: unknown): string;
 /**
  * 提取会话标题（用户可读的任务名，替代内部 session id）。
- * 数据源：agent.session.events 中最后一个 session/title 事件（dsh-session-title
- * 官方插件维护，与 GUI 会话列表同源）。无标题（新会话/未生成）返回 undefined。
+ * 数据源：agent.session 事件日志（经 sessionEventsOf 跨版本读取）中最后一个
+ * session/title 事件（dsh-session-title 官方插件维护，与 GUI 会话列表同源）。无标题（新会话/未生成）返回 undefined。
  * 标题源自会话内容、可携带敏感片段（凭据/路径/邮箱等），返回前经
  * sanitizeErrorText 脱敏再截断 40 字符（先打码后截断：避免长敏感串被腰斩成
  * 不满足规则阈值的残段漏网）；本函数是全部 taskTitle 的唯一来源，在此单点
@@ -78,7 +78,7 @@ export declare function prettyToolName(name: unknown): string;
  */
 export declare function sessionTitleOf(agent: Agent | undefined): string | undefined;
 /**
- * 取 agent 会话日志中最新一条 turn/end（倒序扫描；session.events 是混合
+ * 取 agent 会话日志中最新一条 turn/end（倒序扫描；会话事件日志是混合
  * 日志，turn/end 后可能尾随 session/title、inbox、user/message 等，不能
  * 取 events 末尾——照 sessionTitleOf 同款倒序）。
  * 用于中断抑制：running→idle 时若本轮未闭合新的 turn/end（如 abort 早于
