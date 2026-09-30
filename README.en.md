@@ -85,9 +85,15 @@ Pick one of the following access forms (all require loopback check + secure cont
 - **Approval timeout re-reminder**: when an approval waits longer than `askRemindMin` minutes (default 5, 0 disables) without being handled, remind again
 - **Completion-storm aggregation**: when multiple tasks / subagents finish at once, auto-aggregate into "N other tasks have completed" to avoid notification spam
 
-## Configuration (DSH "Settings" → "Plugin Config", schema-driven unified style)
+## Configuration (DSH "Plugins" page → the dsh-notifier page)
 
-The config is registered via dsh-settings as a native DSH **Settings → Plugin Config** section, auto-rendered by the settings page (unified style) — no separate sidebar "Notifications" panel / badge / test button / history view. Config persists in the DSH settings service (the existing `~/.dsh/dsh-notifier.json` is used as the base layer during migration, so no config is lost). Config shape:
+The settings UI lives on the plugin's own page (**Plugins → @jypjypjypjyp/dsh-notifier**, right under the description: group headings, rows, switches), rendered by a client component (fetch-based, not schema-generated):
+
+- **dsh 0.1.7+**: registers `plugins.bundle.config` (key = package name → the config section on the plugin page).
+- **dsh ≤0.1.6**: still registers the legacy slot `settings.plugin.item` (key `notifier`), i.e. the collapsible **Settings → Plugin Config** card. An undeclared slot never fires, so the two registrations never double-render.
+- Since 0.1.7 the settings service only exposes `SettingsForms` (read/write the profile entry's config document); `register`/`installSection` are gone, so this plugin no longer registers a namespace there (`settings-compat` is a no-op when no registration surface exists).
+
+Config is stored in `~/.dsh/dsh-notifier.json`; the UI reads/writes it through `/api/dsh-notifier/config` (GET/PUT) and saves on every change — the Host settings document is not involved. Config shape:
 
 ```json
 {

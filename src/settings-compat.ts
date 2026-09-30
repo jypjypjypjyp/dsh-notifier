@@ -10,6 +10,8 @@
 //
 // - dsh 0.1.2+：provider.installSection(owner, ns, schema, entry, hooks)
 // - dsh 0.1.1  ：复刻旧 installSettingsSection 的接线（register + setSource/watch）
+// - dsh 0.1.7+ ：两者都没有（服务换成 SettingsForms）→ no-op，配置由插件自管的
+//                JSON 文件 + 自建路由承担，客户端设置区读它
 import type { Context } from "@deepseek-ai/cordis";
 
 /** 与旧 @deepseek-ai/dsh-settings installSettingsSection 的 hooks 形状一致。 */
@@ -53,6 +55,12 @@ export function installSettingsSection(
       provider.installSection(ctx, ns, schema, entry, hooks);
       return;
     }
+    // dsh 0.1.7+：settings 服务只剩「按 profile 条目 id 读配置文档」的 SettingsForms
+    // （describe/update/replace/mutate，见 dsh-settings 的 index.d.ts），register 与
+    // installSection 一并移除。此时本插件的配置面=自己的 JSON 文件 + 自建路由，
+    // 客户端界面读它（plugins.bundle.config 配置区），故这里是 no-op——照旧调用
+    // provider.register 会抛 TypeError（旧契约的静默失败）。
+    if (typeof provider?.register !== "function") return;
     // dsh 0.1.1：复刻旧 installSettingsSection 接线。
     const scope = provider.register(ns, schema, {
       base: entry,

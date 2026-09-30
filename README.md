@@ -81,9 +81,15 @@ npx @deepseek-ai/dsh plugin --profile web update @jypjypjypjyp/dsh-notifier
 - **审批超时二次提醒**：审批等待超 `askRemindMin` 分钟（默认 5，0 关闭）未处理时再次提醒
 - **完成风暴聚合**：多任务/子代理同时收尾自动聚合为「另有 N 个任务已完成」，避免刷屏
 
-## 配置（DSH「设置」→「插件配置」，卡片式）
+## 配置（DSH「插件」页 → dsh-notifier 插件页）
 
-配置以**可折叠卡片**注册在 DSH 原生 **设置 → 插件配置**（`settings.plugin.item`，key `notifier`），由客户端组件渲染（fetch 型，非 schema 自动渲染）。配置文件默认 `~/.dsh/dsh-notifier.json`，可在「设置 → 插件配置」直接改（写回落盘）；迁移时以现有 `~/.dsh/dsh-notifier.json` 作为 DSH 设置服务 base 层，不丢配置。配置结构：
+配置界面挂在**插件页**上（**插件 → @jypjypjypjyp/dsh-notifier**，描述下方即是配置区：分组标题 + 行 + 开关），由客户端组件渲染（fetch 型，非 schema 自动渲染）：
+
+- **dsh 0.1.7+**：注册 `plugins.bundle.config`（key = 包名，即插件页的配置区）。
+- **dsh ≤0.1.6**：仍注册旧插槽 `settings.plugin.item`（key `notifier`），即原**设置 → 插件配置**折叠卡；未被声明的插槽不会被触发，两条注册互不干扰。
+- 0.1.7 起 settings 服务只剩「按 profile 条目 id 读写配置文档」的 `SettingsForms`，`register`/`installSection` 均已移除，故本插件不再向它注册命名空间（`settings-compat` 在无注册面时 no-op）。
+
+配置文件默认 `~/.dsh/dsh-notifier.json`，界面读写经 `/api/dsh-notifier/config`（GET/PUT）直接落盘，改动即时保存、不经过宿主 settings 文档。配置结构：
 
 ```json
 {
@@ -140,7 +146,7 @@ DSH 安装实测版本 junction-link（与运行时一致）。对插件做类�
 - 系统通知失败静默（仅日志），不影响主流程；原生二进制缺失/不可执行（ENOENT 等）
   会被 `error` 事件接住，**绝不冒泡成 unhandled error 把宿主进程打挂**
 - **两个通道到达的机器不同（别混淆）**：
-  - **浏览器通知**推到**你正在用的浏览器客户端**（Mac/手机都算），由浏览器 Notification API 弹出原生通知；需要授权、且默认页面隐藏时才弹（「设置 → 插件配置」可开「页面可见也弹」）。无论 dsh web 跑在哪台机器，只要浏览器通知允许，你都能在自己的 Mac 上收到。
+  - **浏览器通知**推到**你正在用的浏览器客户端**（Mac/手机都算），由浏览器 Notification API 弹出原生通知；需要授权、且默认页面隐藏时才弹（插件页配置区可开「页面可见时也弹」）。无论 dsh web 跑在哪台机器，只要浏览器通知允许，你都能在自己的 Mac 上收到。
   - **系统通知（宿主 toast）**弹在 **dsh web 运行的宿主机器**桌面：若 dsh web 跑在 Linux 服务器（headless，无桌面会话）或别的机器上，toast 会出现在**那台服务器**而不是你的 Mac——health 会体现该通道是否可用。想让系统 toast 也出现在你的 Mac 上，需把 dsh web 直接跑在你的 Mac 上（此时走 macOS 的 `osascript`）；macOS 无 `notify-send`，系统通知已用系统自带的 `osascript` 实现（无需安装）
 - **iOS 差异**：Safari 普通标签页无 Web Notifications API（「添加到主屏幕」的 PWA
   才有）；iOS 上可用通道为「页面可见时横幅 + 提示音」及 HTTPS+A2HS 后的系统通知

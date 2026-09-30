@@ -4,16 +4,15 @@
  * 两件事：
  * 1. 通知显示：自动订阅 /events SSE；页面隐藏时用 Notification API 弹通知；
  *    非安全上下文/无权限时降级为页面内横幅 + 提示音 + 标题提醒。
- * 2. 设置卡片：注册 DSH「设置 → 插件配置」的 `settings.plugin.item` 卡片
- *    （key `notifier`），经 /api/dsh-notifier/config GET/PUT 读写——与
- *    dsh-super-injector 同款 fetch 型（不依赖 `ctx.settingsScope`），body 由
- *    DSH 统一主题 token 渲染成可折叠卡片（对齐 dsh-advisor）。
+ * 2. 设置界面：注册 DSH 插件页的 `plugins.bundle.config` 配置区（dsh 0.1.7+，
+ *    key = 包名），并为旧宿主保留 `settings.plugin.item` 折叠卡（≤0.1.6）；
+ *    两端都经 /api/dsh-notifier/config GET/PUT 读写——fetch 型，不依赖宿主
+ *    settings 文档，样式走 DSH 统一主题 token。
  * 路由常量与宿主端 ROUTES 一致（smoke 断言）。
  */
 // 浏览器半区干净模块：只导出 apply/inject；React 为 host 注入 external（factory require）。
 import STYLE from "./style.css";
 import React from "react";
-import { IconChevronDownOutline14 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 var ROUTES = {
   config: "/api/dsh-notifier/config",
@@ -264,31 +263,53 @@ function startEvents() {
   };
 }
 
-// ------------------------------------------------------------ 设置卡片（DSH「插件配置」）
+// ------------------------------------------------------------ 设置界面（插件页配置区 / 旧版设置卡）
 
-// 与 super-injector 同款：只依赖 ctx.slots（不依赖 settingsScope），配置经
-// /api/dsh-notifier/config GET/PUT 读写（host 的 current 即 settings 回流值，
-// PUT 会更新 current 并落盘——与宿主 installSettingsSection 的 setSource 兼容）。
-var rowStyle = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "8px 0", borderBottom: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" };
-var groupTitleStyle = { fontSize: "12px", fontWeight: "600", color: "var(--dsw-alias-label-secondary,#5f6672)", margin: "10px 0 4px" };
-var labelStyle = { flex: "1", fontSize: "13px", color: "var(--dsw-alias-label-primary,#1f2329)" };
-var inputStyle = { width: "96px", background: "var(--dsw-alias-bg-layer-1,#f5f6f8)", color: "var(--dsw-alias-label-primary,#1f2329)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 8px", boxSizing: "border-box" };
-var timeStyle = { background: "var(--dsw-alias-bg-layer-1,#f5f6f8)", color: "var(--dsw-alias-label-primary,#1f2329)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 8px" };
-var noteStyle = { fontSize: "11px", color: "var(--dsw-alias-label-tertiary,#8a919c)", lineHeight: "1.6", marginTop: "8px" };
-var btnStyle = { flex: "none", appearance: "none", font: "inherit", fontSize: "12px", cursor: "pointer", color: "var(--dsw-alias-label-primary,#1f2329)", background: "var(--dsw-alias-bg-layer-3,#f5f6f8)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: "6px", padding: "4px 10px" };
-// 卡片壳（对齐 dsh-advisor 的 settings.plugin.item 卡片：header 标题+描述+chevron，body 可折叠）。
-var cardStyle = { border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", background: "var(--dsw-alias-bg-layer-3,#f5f6f8)", borderRadius: "12px", overflow: "hidden" };
-var headerStyle = { appearance: "none", width: "100%", font: "inherit", color: "inherit", textAlign: "left", cursor: "pointer", background: "transparent", border: "0", alignItems: "center", gap: "12px", padding: "14px 16px", display: "flex" };
-var headTextStyle = { flexDirection: "column", flex: "1", gap: "4px", minWidth: "0", display: "flex" };
-var nameStyle = { color: "var(--dsw-alias-label-primary,#1f2329)", fontSize: "15px", fontWeight: "600", lineHeight: "1.4" };
-var descriptionStyle = { color: "var(--dsw-alias-label-tertiary,#8a919c)", fontSize: "13px", lineHeight: "1.5" };
-var chevronStyle = { color: "var(--dsw-alias-label-tertiary,#8a919c)", flex: "none", transition: "transform .16s", transform: "rotate(0deg)" };
-var bodyStyle = { borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "0 16px", paddingBottom: "8px" };
+// 两代宿主各挂一处，互不干扰（未声明的插槽不会被触发）：
+// - dsh 0.1.7+ ：设置面板只剩「内置插件」条目列表，插件自己的配置页改挂插件页的
+//   `plugins.bundle.config`（key = 包名，见 ui-plugin-manager 的 slot-contract）——
+//   登记后插件页在描述下、组件列表上多出一块配置区，形如 dsh-mnemon 的设置页。
+// - dsh ≤0.1.6 ：原 `settings.plugin.item`（key `notifier`）折叠卡。
+// 配置读写一律走本插件自建路由（GET/PUT /api/dsh-notifier/config → 落盘 JSON），
+// 不依赖宿主 settings 文档（dsh-free-search 同款：0.1.7 的 settings 服务已无注册面）。
+var PKG_NAME = "@jypjypjypjyp/dsh-notifier";
+var PAGE_SLOT = "plugins.bundle.config";
+var LEGACY_SLOT = "settings.plugin.item";
+var SUMMARY_TEXT = "审批 / 完成 / 错误事件提醒";
 
-function ToggleRow(props: any) {
-  return React.createElement("label", { style: rowStyle },
-    React.createElement("span", { style: labelStyle }, props.label),
-    React.createElement("input", { type: "checkbox", checked: props.checked === true, onChange: function (e: any) { props.onChange(e.target.checked); } })
+/** 通知事件开关（键 / 标签 / 说明）。 */
+var EVENT_ROWS: string[][] = [
+  ["notifyAsk", "审批等待", "需要你批准工具调用时提醒"],
+  ["notifyQuestion", "向你提问", "模型向你提问题时提醒"],
+  ["notifyTaskDone", "任务完成", "主任务收尾时提醒"],
+  ["notifySubagentDone", "子任务完成", "派生的子代理收尾时提醒（默认关）"],
+  ["notifyTaskError", "任务出错", "回合报错时提醒（窗口内合并）"],
+  ["notifyTurnEnd", "轮次完成", "每轮结束都提醒（不等于任务完成）"],
+];
+
+/** 通知通道开关（键 / 标签 / 说明）。 */
+var CHANNEL_ROWS: string[][] = [
+  ["systemNotify", "系统通知", "弹系统原生通知（WinRT / osascript / notify-send）"],
+  ["browserNotify", "浏览器通知", "页面内弹浏览器 Notification"],
+  ["notifyWhenVisible", "页面可见时也弹", "默认只在页面隐藏时提醒"],
+  ["notifySound", "通知声音", "系统通知带提示音"],
+];
+
+/** 合并/去重与保留（键 / 标签 / 说明）。 */
+var WINDOW_ROWS: string[][] = [
+  ["errorMergeWindowMs", "错误合并窗口", "毫秒：同类错误在此窗口内合并；0 = 每条都提醒"],
+  ["doneMergeWindowMs", "完成聚合窗口", "毫秒：并行收尾防刷屏；0 = 关闭聚合"],
+  ["askRemindMin", "审批重提醒", "分钟：审批卡住超时后再提醒一次；0 = 关闭"],
+  ["historyMaxAgeDays", "历史保留", "天：通知历史自动清理；0 = 只按行数滚动"],
+];
+
+/** 免打扰紧急例外（kind / 标签）。 */
+var ALLOW_ROWS: string[][] = [["ask", "审批"], ["question", "提问"], ["error", "出错"]];
+
+/** 折叠卡 chevron（自绘 SVG：宿主 UI 包的图标名各版本有增删，取错会静默 undefined 并崩整卡）。 */
+function ChevronIcon() {
+  return React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", "aria-hidden": "true" },
+    React.createElement("path", { d: "M4 6.5 8 10.5l4-4", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round", strokeLinejoin: "round" })
   );
 }
 
@@ -316,11 +337,13 @@ function runNotifySelfTest(setResult: any) {
   setResult(text);
 }
 
-function NotifierSettingsCard(props: any) {
+/** 设置表单本体（两种宿主形态共用一套字段与读写）。 */
+function NotifierSettings(props: any) {
+  var pageMode = !!(props && props.view === "page");
   var pair = React.useState(function () { return { loading: true, cfg: null }; });
   var st = pair[0];
   var setSt = pair[1];
-  var openPair = React.useState(false);
+  var openPair = React.useState(pageMode);
   var open = openPair[0];
   var setOpen = openPair[1];
   var testPair = React.useState("");
@@ -332,88 +355,137 @@ function NotifierSettingsCard(props: any) {
       .then(function (cfg) { setSt({ loading: false, cfg: cfg }); })
       .catch(function () { setSt({ loading: false, cfg: null }); });
   }, []);
-  if (st.loading) return React.createElement("div", { style: noteStyle }, "加载配置…");
-  if (!st.cfg) return React.createElement("div", { style: noteStyle }, "配置不可用（loopback 围栏：请经 127.0.0.1/localhost 访问）。");
+
+  /** 一个开关行（label + 说明 + 右侧开关）。 */
+  function toggleRow(key: string, label: string, hint: string, value: boolean, onToggle: (v: boolean) => void) {
+    return React.createElement("label", { className: "dn-row", key: key },
+      React.createElement("span", { className: "dn-row-main" },
+        React.createElement("span", { className: "dn-row-label" }, label),
+        hint ? React.createElement("span", { className: "dn-row-hint" }, hint) : null
+      ),
+      React.createElement("input", {
+        type: "checkbox", className: "dn-switch", checked: value === true,
+        "aria-label": label, onChange: function (e: any) { onToggle(e.target.checked); },
+      })
+    );
+  }
+
+  /** 一个分组（标题 + 行）。 */
+  function group(title: string, rows: any[], name: string) {
+    return React.createElement("div", { className: "dn-group", key: name },
+      React.createElement("div", { className: "dn-group-title" }, title), rows);
+  }
+
+  if (st.loading) return React.createElement("div", { className: "dn-note" }, "加载配置…");
+  if (!st.cfg) return React.createElement("div", { className: "dn-note" }, "配置不可用（loopback 围栏：请经 127.0.0.1/localhost 访问）。");
 
   var cfg = st.cfg;
   var commit = function (next: any) {
     fetch(ROUTES.config, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(next) })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (saved) { setSt({ loading: false, cfg: saved }); })
+      .then(function (saved) { setSt({ loading: false, cfg: saved }); configCache = saved; })
       .catch(function () { /* 保留现值 */ });
   };
   var set = function (field: string, v: any) { commit(Object.assign({}, cfg, (function () { var o: any = {}; o[field] = v; return o; })())); };
   var qh = cfg.quietHours || { enabled: false, start: "22:00", end: "08:00", allowKinds: [] };
   var setQh = function (patch: any) { commit(Object.assign({}, cfg, { quietHours: Object.assign({}, qh, patch) })); };
 
-  var children: any[] = [];
-  children.push(React.createElement("div", { style: groupTitleStyle }, "通知事件"));
-  [["notifyAsk", "审批等待"], ["notifyQuestion", "向你提问"], ["notifyTaskDone", "任务完成"],
-   ["notifySubagentDone", "子任务完成"], ["notifyTaskError", "任务出错"], ["notifyTurnEnd", "轮次完成"]]
-    .forEach(function (kv) { children.push(React.createElement(ToggleRow, { label: kv[1], checked: cfg[kv[0]], onChange: function (v: boolean) { set(kv[0], v); } })); });
+  var groups: any[] = [];
 
-  children.push(React.createElement("div", { style: groupTitleStyle }, "通知通道"));
-  [["systemNotify", "系统通知"], ["browserNotify", "浏览器通知"], ["notifyWhenVisible", "页面可见时也弹"], ["notifySound", "通知声音"]]
-    .forEach(function (kv) { children.push(React.createElement(ToggleRow, { label: kv[1], checked: cfg[kv[0]], onChange: function (v: boolean) { set(kv[0], v); } })); });
+  groups.push(group("通知事件", EVENT_ROWS.map(function (row) {
+    return toggleRow(row[0], row[1], row[2], cfg[row[0]], function (v) { set(row[0], v); });
+  }), "events"));
 
-  // ---- 浏览器通知诊断（自检：权限状态 / 安全上下文 / SSE 接收 / 测试弹窗）----
-  children.push(React.createElement("div", { style: groupTitleStyle }, "浏览器通知诊断"));
+  groups.push(group("通知通道", CHANNEL_ROWS.map(function (row) {
+    return toggleRow(row[0], row[1], row[2], cfg[row[0]], function (v) { set(row[0], v); });
+  }), "channels"));
+
+  // ---- 浏览器通知诊断（权限状态 / 安全上下文 / SSE 接收 / 测试弹窗）----
   var hasApi = "Notification" in window;
-  var diagText =
-    "安全上下文: " + (isSecureContext() ? "✓" : "✗（需 HTTPS 或 127.0.0.1/localhost）") +
-    " ｜ Notification: " + (hasApi ? "✓" : "✗") +
-    " ｜ 权限: " + (hasApi ? Notification.permission : "n/a") +
-    " ｜ 本页收到帧: " + diagStats.frames +
-    " ｜ 已弹: " + diagStats.shown;
-  children.push(React.createElement("div", { style: noteStyle }, diagText));
-  children.push(React.createElement("div", { style: rowStyle },
-    React.createElement("span", { style: labelStyle }, "浏览器通知自检（点击触发）"),
-    React.createElement("button", { type: "button", style: btnStyle, onClick: function () { runNotifySelfTest(setTestRes); } }, "自检")
-  ));
-  if (testRes) children.push(React.createElement("div", { style: noteStyle }, testRes));
-
-  children.push(React.createElement("div", { style: groupTitleStyle }, "免打扰时段"));
-  children.push(React.createElement(ToggleRow, { label: "启用", checked: qh.enabled, onChange: function (v: boolean) { setQh({ enabled: v }); } }));
-  children.push(React.createElement("div", { style: Object.assign({}, rowStyle, { justifyContent: "flex-start", gap: "6px" }) },
-    React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary,#5f6672)", fontSize: "13px" } }, "从"),
-    React.createElement("input", { type: "time", value: qh.start, style: timeStyle, onChange: function (e: any) { setQh({ start: e.target.value || "22:00" }); } }),
-    React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary,#5f6672)", fontSize: "13px" } }, "到"),
-    React.createElement("input", { type: "time", value: qh.end, style: timeStyle, onChange: function (e: any) { setQh({ end: e.target.value || "08:00" }); } })
-  ));
-  var allows = qh.allowKinds || [];
-  children.push(React.createElement("div", { style: Object.assign({}, rowStyle, { justifyContent: "flex-start", gap: "14px", flexWrap: "wrap" }) },
-    React.createElement("span", { style: noteStyle }, "免打扰仍提醒："),
-    [["ask", "审批"], ["question", "提问"], ["error", "出错"]].map(function (kv) {
-      return React.createElement("label", { style: { display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer", color: "var(--dsw-alias-label-secondary,#5f6672)" } },
-        React.createElement("input", { type: "checkbox", checked: allows.indexOf(kv[0]) !== -1, onChange: function (e: any) {
-          var next = allows.slice();
-          if (e.target.checked && next.indexOf(kv[0]) === -1) next.push(kv[0]);
-          else if (!e.target.checked && next.indexOf(kv[0]) !== -1) next.splice(next.indexOf(kv[0]), 1);
-          setQh({ allowKinds: next });
-        } }), React.createElement("span", null, kv[1]));
-    })
-  ));
-
-  children.push(React.createElement("div", { style: groupTitleStyle }, "合并/去重（ms，0=关）"));
-  [["errorMergeWindowMs", "错误合并窗口"], ["doneMergeWindowMs", "完成聚合窗口"], ["askRemindMin", "审批重提醒(分钟)"], ["historyMaxAgeDays", "历史保留(天)"]]
-    .forEach(function (kv) {
-      children.push(React.createElement("label", { style: rowStyle },
-        React.createElement("span", { style: labelStyle }, kv[1]),
-        React.createElement("input", { type: "number", min: "0", step: "100", value: cfg[kv[0]] == null ? 0 : cfg[kv[0]], style: inputStyle, onChange: function (e: any) { var v = parseInt(e.target.value, 10); set(kv[0], Number.isFinite(v) && v >= 0 ? v : 0); } })
-      ));
-    });
-
-  children.push(React.createElement("div", { style: noteStyle }, "浏览器通知仅在页面隐藏时弹出（可开「页面可见时也弹」）；系统通知由宿主发出。"));
-  return React.createElement("div", { style: cardStyle },
-    React.createElement("button", { type: "button", style: headerStyle, onClick: function () { setOpen(!open); }, "aria-expanded": String(open), "aria-label": (open ? "收起" : "展开") + ": 通知" },
-      React.createElement("div", { style: headTextStyle },
-        React.createElement("span", { style: nameStyle }, "通知"),
-        React.createElement("span", { style: descriptionStyle }, "审批 / 完成 / 错误事件提醒")
-      ),
-      React.createElement("span", { style: Object.assign({ display: "inline-flex" }, chevronStyle, open ? { transform: "rotate(180deg)" } : {}) }, React.createElement(IconChevronDownOutline14))
+  var diagRows: any[] = [
+    React.createElement("div", { className: "dn-note", key: "diag" },
+      "安全上下文: " + (isSecureContext() ? "✓" : "✗（需 HTTPS 或 127.0.0.1/localhost）") +
+      " ｜ Notification: " + (hasApi ? "✓" : "✗") +
+      " ｜ 权限: " + (hasApi ? Notification.permission : "n/a") +
+      " ｜ 本页收到帧: " + diagStats.frames +
+      " ｜ 已弹: " + diagStats.shown),
+    React.createElement("div", { className: "dn-row", key: "selftest" },
+      React.createElement("span", { className: "dn-row-main" },
+        React.createElement("span", { className: "dn-row-label" }, "浏览器通知自检")),
+      React.createElement("button", { type: "button", className: "dn-btn", onClick: function () { runNotifySelfTest(setTestRes); } }, "自检")
     ),
-    open ? React.createElement("div", { style: bodyStyle }, children) : null
+  ];
+  if (testRes) diagRows.push(React.createElement("div", { className: "dn-note", key: "testres" }, testRes));
+  groups.push(group("浏览器通知诊断", diagRows, "diag"));
+
+  // ---- 免打扰时段 ----
+  var allows = qh.allowKinds || [];
+  groups.push(group("免打扰时段", [
+    toggleRow("quietEnabled", "启用", "时段内静音，仅「免打扰仍提醒」的事件放行", qh.enabled, function (v) { setQh({ enabled: v }); }),
+    React.createElement("div", { className: "dn-row", key: "qh-time" },
+      React.createElement("span", { className: "dn-row-main" },
+        React.createElement("span", { className: "dn-row-label" }, "时段"),
+        React.createElement("span", { className: "dn-row-hint" }, "跨零点（如 22:00 → 08:00）按跨夜处理")),
+      React.createElement("span", { className: "dn-inline" },
+        React.createElement("span", { className: "dn-row-hint" }, "从"),
+        React.createElement("input", { type: "time", className: "dn-input", value: qh.start, "aria-label": "免打扰开始时间", onChange: function (e: any) { setQh({ start: e.target.value || "22:00" }); } }),
+        React.createElement("span", { className: "dn-row-hint" }, "到"),
+        React.createElement("input", { type: "time", className: "dn-input", value: qh.end, "aria-label": "免打扰结束时间", onChange: function (e: any) { setQh({ end: e.target.value || "08:00" }); } })
+      )
+    ),
+    React.createElement("div", { className: "dn-row", key: "qh-allow" },
+      React.createElement("span", { className: "dn-row-main" },
+        React.createElement("span", { className: "dn-row-label" }, "免打扰仍提醒")),
+      React.createElement("span", { className: "dn-inline" }, ALLOW_ROWS.map(function (kv) {
+        return React.createElement("label", { className: "dn-choice", key: kv[0] },
+          React.createElement("input", { type: "checkbox", checked: allows.indexOf(kv[0]) !== -1, onChange: function (e: any) {
+            var next = allows.slice();
+            if (e.target.checked && next.indexOf(kv[0]) === -1) next.push(kv[0]);
+            else if (!e.target.checked && next.indexOf(kv[0]) !== -1) next.splice(next.indexOf(kv[0]), 1);
+            setQh({ allowKinds: next });
+          } }), React.createElement("span", null, kv[1]));
+      }))
+    ),
+  ], "quiet"));
+
+  // ---- 合并 / 去重 / 保留 ----
+  groups.push(group("合并 / 去重 / 保留", WINDOW_ROWS.map(function (row) {
+    return React.createElement("label", { className: "dn-row", key: row[0] },
+      React.createElement("span", { className: "dn-row-main" },
+        React.createElement("span", { className: "dn-row-label" }, row[1]),
+        React.createElement("span", { className: "dn-row-hint" }, row[2])),
+      React.createElement("input", {
+        type: "number", min: "0", step: "100", className: "dn-input", "aria-label": row[1],
+        value: cfg[row[0]] == null ? 0 : cfg[row[0]],
+        onChange: function (e: any) { var v = parseInt(e.target.value, 10); set(row[0], Number.isFinite(v) && v >= 0 ? v : 0); },
+      })
+    );
+  }), "windows"));
+
+  groups.push(React.createElement("div", { className: "dn-note", key: "footer" },
+    "浏览器通知仅在页面隐藏时弹出（可开「页面可见时也弹」）；系统通知由宿主发出。改动即时保存。"));
+  if (!pageMode) groups.push(React.createElement("div", { className: "dn-note", key: "legacy-tip" }, "配置文件：~/.dsh/dsh-notifier.json"));
+
+  // 插件页形态：页面已自带标题、版本与描述，这里只出配置区（不套折叠壳）。
+  if (pageMode) return React.createElement("div", { className: "dn-set" }, groups);
+
+  // 旧设置卡形态（≤0.1.6）：标题 + 描述 + chevron 的可折叠卡片。
+  return React.createElement("div", { className: "dn-card" },
+    React.createElement("button", { type: "button", className: "dn-card-head", onClick: function () { setOpen(!open); }, "aria-expanded": String(open), "aria-label": (open ? "收起" : "展开") + ": 通知" },
+      React.createElement("div", { className: "dn-card-text" },
+        React.createElement("span", { className: "dn-card-name" }, "通知"),
+        React.createElement("span", { className: "dn-card-desc" }, SUMMARY_TEXT)
+      ),
+      React.createElement("span", { className: "dn-card-chevron", "data-open": String(open) }, React.createElement(ChevronIcon))
+    ),
+    open ? React.createElement("div", { className: "dn-card-body" }, groups) : null
   );
+}
+
+/** 插槽入口：summary 形态只出单行说明（页面用法见 ui-plugin-manager 的 slot-contract）。 */
+function renderSettings(props: any) {
+  if (props && props.view === "summary") return React.createElement("span", null, SUMMARY_TEXT);
+  return React.createElement(NotifierSettings, props);
 }
 
 // ------------------------------------------------------------ 挂载
@@ -437,13 +509,20 @@ export function apply(ctx: any) {
         if ("Notification" in window && Notification.permission === "default") requestPermission();
         document.removeEventListener("click", onFirstClick);
       }, { capture: true });
-      // DSH「设置 → 插件配置」卡片（super-injector 同款：仅依赖 ctx.slots）。
+      // 设置界面（只依赖 ctx.slots）：插件页配置区（0.1.7+）+ 旧设置卡（≤0.1.6）。
+      // 插槽未声明时 inject 的回调不会触发（ui-slots 的 inject 按 declaration 就绪
+      // 才执行），两条注册因此可以同时挂着而不会在任一代宿主上重复出界面。
       if (ctx && ctx.slots && typeof ctx.slots.inject === "function") {
         ctx.effect(function () {
-          return ctx.slots.inject("settings.plugin.item", function () {
-            return ctx.slots.register({ name: "settings.plugin.item", key: "notifier" }, NotifierSettingsCard);
+          return ctx.slots.inject(PAGE_SLOT, function () {
+            return ctx.slots.register({ name: PAGE_SLOT, key: PKG_NAME }, renderSettings);
           });
-        }, "dsh-notifier: settings card");
+        }, "dsh-notifier: plugin page config");
+        ctx.effect(function () {
+          return ctx.slots.inject(LEGACY_SLOT, function () {
+            return ctx.slots.register({ name: LEGACY_SLOT, key: "notifier" }, renderSettings);
+          });
+        }, "dsh-notifier: legacy settings card");
       }
       ctx.effect(function () {
         return function () {

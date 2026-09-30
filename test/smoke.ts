@@ -6,6 +6,7 @@
  * 求值，各用例文件的顶层断言依序执行；单文件职责见各文件头注释：
  *
  * - unit-config.test.ts     配置归一化 / 免打扰判定（parseHHMM、isInQuietHours）
+ * - unit-settings-compat.test.ts 设置分区安装兼容层（0.1.1 / 0.1.2+ / 0.1.7+ 三代表现）
  * - unit-text.test.ts       文案格式化 / 工具名美化 / 系统命令构造 / loopback 判定
  * - unit-sanitize.test.ts   错误文本脱敏（含性能护栏与 FP 证伪回归）
  * - e2e-approval.test.ts    审批请求通知（waterfall 不短路 / allowKinds 例外）
@@ -18,6 +19,7 @@
 
 // unit：纯函数域
 import "./unit-config.test.ts";
+import "./unit-settings-compat.test.ts";
 import "./unit-text.test.ts";
 import "./unit-sanitize.test.ts";
 

@@ -56,10 +56,11 @@ import type { NotifyDetail, SubagentOwnership } from "./message.js";
 import { buildRoutes, createSseHub, createSystemNotifier } from "./server.js";
 // DSH 设置服务命名空间注册（宿主核心模块，运行时注入）：把 `notifier` 命名空间
 // 注册进 DSH 设置服务（composition entry 作为 base 层），source thunk 指向 resolved
-// scope，setSource 把生效配置回流到 current——使配置进入 DSH「设置→插件配置」范围。
-// 注意：真正的表单渲染在客户端（settings.plugin.item 卡片，fetch 型），此处 schema
-// 供设置服务 resolve/校验，不负责渲染。设置分区安装经 ./settings-compat.js 做
-// 特性检测（0.1.2 起 dsh-settings 移除了模块级 helper，禁止对其静态 named import）。
+// scope，setSource 把生效配置回流到 current——旧设置页据此解析/校验配置。
+// 注意：真正的表单渲染在客户端（插件页 plugins.bundle.config 配置区 / 旧设置卡，
+// 均为 fetch 型），此处 schema 供设置服务 resolve/校验，不负责渲染。设置分区安装经
+// ./settings-compat.js 做特性检测（0.1.2 起 dsh-settings 移除了模块级 helper，禁止对
+// 其静态 named import；0.1.7 起该服务连 register/installSection 都没有 → no-op）。
 import z from "@deepseek-ai/schemastery";
 import { installSettingsSection } from "./settings-compat.js";
 
@@ -96,7 +97,7 @@ export { writeJson, readBody, errorMessage } from "./utils.js";
 /**
  * schemastery schema：notifier 命名空间的设置服务 resolve/校验用（供 DSH
  * 设置服务解析配置，字段与 NotifyConfig / DEFAULT_CONFIG 一一对应）。
- * 渲染由客户端 settings.plugin.item 卡片负责，此处不产 UI。
+ * 渲染由客户端设置界面负责（插件页配置区 / 旧设置卡），此处不产 UI。
  */
 const NotifyConfigSchema = z.object({
   notifyAsk: z.boolean().default(true),
@@ -646,11 +647,11 @@ export async function apply(ctx: Context, config: NotifierApplyConfig = {}): Pro
 
   await loadConfig();
 
-  // 注册 DSH 设置页→插件配置 命名空间（schema 驱动 + 统一风格由 DSH 渲染）。
-  // entry = 组合层基准；setSource 在 settings service 挂载时把已解析配置
-  // （defaults ← base ← user）回流进 current——设置页即配置编辑器。
-  // 无 settings service 时本调用为 no-op（current 保持 loadConfig/默认值），
-  // 测试/无 settings 的宿主路径不受影响，保持向后兼容。
+  // 注册 DSH 设置服务命名空间（旧设置页的 schema 面）。entry = 组合层基准；
+  // setSource 在 settings service 挂载时把已解析配置（defaults ← base ← user）
+  // 回流进 current。
+  // 无 settings service、或服务已无注册面（0.1.7 只剩 SettingsForms）时本调用为
+  // no-op（current 保持 loadConfig/默认值），设置界面读自建路由，不受影响。
   // ⚠️ installSettingsSection 内部经 ctx.inject(["settings"]) 依赖注入取 service：
   // 仅当宿主 ctx.inject 存在（cordis 运行时）才注册；测试 fake ctx 无 inject，跳过。
   if (typeof (ctx as { inject?: unknown }).inject === "function") {
